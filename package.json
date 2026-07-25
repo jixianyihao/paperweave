@@ -1,0 +1,15 @@
+{
+  "name": "paperweave",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "concurrently -n backend,web -c blue,green \"pnpm -F @paperweave/backend dev\" \"pnpm -F @paperweave/web dev\"",
+    "dev:desktop": "concurrently -n backend,web,tauri -c blue,green,yellow \"pnpm -F @paperweave/backend dev\" \"pnpm -F @paperweave/web dev\" \"pnpm -F @paperweave/desktop dev\"",
+    "test": "pnpm -r test",
+    "build:reader": "bash scripts/build-reader.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

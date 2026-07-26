@@ -4,3 +4,4 @@ dist/
 data/
 apps/web/public/reader/
 apps/desktop/src-tauri/target/
+*.tsbuildinfo

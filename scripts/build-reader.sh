@@ -20,5 +20,11 @@ rm -rf apps/web/public/reader
 mkdir -p apps/web/public/reader
 cp -R vendor/zotero-reader/build/web/. apps/web/public/reader/
 
+# The upstream web build only defines window.createReader; nothing calls it,
+# so a bare reader.html renders blank. Ship our bootstrap next to it and
+# inject a deferred <script> tag so it runs after reader.js.
+cp scripts/reader-bootstrap.js apps/web/public/reader/bootstrap.js
+perl -0pi -e 's{</body>}{<script defer="defer" src="bootstrap.js"></script></body>}' apps/web/public/reader/reader.html
+
 echo "--- reader web build copied. HTML entries: ---"
 ls apps/web/public/reader/*.html

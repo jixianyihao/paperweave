@@ -5,3 +5,4 @@ data/
 apps/web/public/reader/
 apps/desktop/src-tauri/target/
 *.tsbuildinfo
+apps/desktop/src-tauri/gen/

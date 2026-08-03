@@ -30,4 +30,18 @@ describe("GET /api/items", () => {
     expect(res.json()).toEqual([]);
     await app.close();
   });
+
+  it("breaks date_added ties by id descending", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    const insert = db.prepare("INSERT INTO items (id, title, date_added) VALUES (?, ?, ?)");
+    insert.run("aaa111", "First", "2026-01-01 00:00:00");
+    insert.run("bbb222", "Second", "2026-01-01 00:00:00");
+    const app = buildServer(db);
+    const res = await app.inject({ method: "GET", url: "/api/items" });
+    const ids = (res.json() as { id: string }[]).map(r => r.id);
+    expect(ids).toEqual(["bbb222", "aaa111"]);
+    await app.close();
+    db.close();
+  });
 });

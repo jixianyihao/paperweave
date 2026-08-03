@@ -1,9 +1,19 @@
 import Database from "better-sqlite3";
-import { mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+
+export function resolveDataDir(startDir: string = import.meta.dirname): string {
+  let dir = startDir;
+  for (;;) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) return join(dir, "data");
+    const parent = dirname(dir);
+    if (parent === dir) return join(process.cwd(), "data");
+    dir = parent;
+  }
+}
 
 export function dataDir(): string {
-  return process.env.DATA_DIR ?? join(process.cwd(), "data");
+  return process.env.DATA_DIR ?? resolveDataDir();
 }
 
 export function openDb(dir: string = dataDir()): Database.Database {
@@ -27,7 +37,10 @@ export function migrate(
   const files = readdirSync(migrationsDir).filter(f => f.endsWith(".sql")).sort();
   for (const file of files) {
     if (applied.has(file)) continue;
-    db.exec(readFileSync(join(migrationsDir, file), "utf8"));
-    db.prepare("INSERT INTO _migrations (name) VALUES (?)").run(file);
+    const sql = readFileSync(join(migrationsDir, file), "utf8");
+    db.transaction(() => {
+      db.exec(sql);
+      db.prepare("INSERT INTO _migrations (name) VALUES (?)").run(file);
+    })();
   }
 }

@@ -14,7 +14,11 @@
 window.addEventListener('DOMContentLoaded', () => {
 	const params = new URLSearchParams(window.location.search);
 	const file = params.get('file');
-	if (!file || window._reader) {
+	if (!file) {
+		console.error('[paperweave] reader-bootstrap: no ?file= query parameter given; reader will render blank. Expected URL: reader.html?file=<path>[&type=pdf]');
+		return;
+	}
+	if (window._reader) {
 		return;
 	}
 	const noop = () => {};

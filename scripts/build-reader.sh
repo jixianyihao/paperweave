@@ -25,6 +25,7 @@ cp -R vendor/zotero-reader/build/web/. apps/web/public/reader/
 # inject a deferred <script> tag so it runs after reader.js.
 cp scripts/reader-bootstrap.js apps/web/public/reader/bootstrap.js
 perl -0pi -e 's{</body>}{<script defer="defer" src="bootstrap.js"></script></body>}' apps/web/public/reader/reader.html
+grep -q bootstrap.js apps/web/public/reader/reader.html || { echo "ERROR: bootstrap injection failed"; exit 1; }
 
 echo "--- reader web build copied. HTML entries: ---"
 ls apps/web/public/reader/*.html

@@ -20,6 +20,6 @@ export interface ItemRow {
 
 export function registerItemRoutes(app: FastifyInstance, db: Database.Database): void {
   app.get("/api/items", async (): Promise<ItemRow[]> => {
-    return db.prepare("SELECT * FROM items ORDER BY date_added DESC").all() as ItemRow[];
+    return db.prepare("SELECT * FROM items ORDER BY date_added DESC, id DESC").all() as ItemRow[];
   });
 }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
+    "fast-xml-parser": "^4.4.1",
     "fastify": "^4.28.1",
     "pdfjs-dist": "^4.10.38",
     "zod": "^3.23.8"

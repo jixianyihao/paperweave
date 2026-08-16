@@ -73,8 +73,6 @@ export async function importPdf(
   let meta: PaperMeta | null = null;
   if (hints.doi) meta = await fetchByDoi(hints.doi, fetchImpl);
   if (!meta && hints.arxivId) meta = await fetchByArxiv(hints.arxivId, fetchImpl);
-  // arXiv papers carry a DataCite DOI of the form 10.48550/arXiv.<id>; try it as a last resort
-  if (!meta && hints.arxivId) meta = await fetchByDoi(`10.48550/arXiv.${hints.arxivId}`, fetchImpl);
 
   if (meta?.title) {
     applyMeta(db, id, meta);

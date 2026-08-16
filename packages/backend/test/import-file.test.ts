@@ -18,12 +18,28 @@ const crossrefJson = {
   },
 };
 
+const arxivXml = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>http://arxiv.org/abs/1706.03762v5</id>
+    <title>Attention Is All You Need</title>
+    <published>2017-06-12T17:57:34Z</published>
+    <summary>Dominant sequence transduction models…</summary>
+    <author><name>Ashish Vaswani</name></author>
+  </entry>
+</feed>`;
+
 function fetchOk() {
-  return (async () => ({
-    ok: true, status: 200,
-    json: async () => crossrefJson,
-    text: async () => JSON.stringify(crossrefJson),
-  })) as unknown as typeof fetch;
+  return (async (url: RequestInfo | URL) => {
+    if (String(url).includes("export.arxiv.org")) {
+      return { ok: true, status: 200, text: async () => arxivXml } as unknown as Response;
+    }
+    return {
+      ok: true, status: 200,
+      json: async () => crossrefJson,
+      text: async () => JSON.stringify(crossrefJson),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
 }
 function fetchBoom() {
   return (async () => { throw new Error("offline"); }) as unknown as typeof fetch;

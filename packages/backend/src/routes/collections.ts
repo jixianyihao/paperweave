@@ -4,21 +4,26 @@ import { z } from "zod";
 import { newKey } from "../lib/keys.js";
 
 const nameSchema = z.object({ name: z.string().trim().min(1) }).strict();
+const createSchema = z.object({ name: z.string().trim().min(1), parent_id: z.string().nullable().optional() }).strict();
 
 export function registerCollectionRoutes(app: FastifyInstance, db: Database.Database): void {
   app.get("/api/collections", async () => {
     return db.prepare(`
       SELECT c.id, c.parent_id, c.name,
         (SELECT COUNT(*) FROM collection_items ci WHERE ci.collection_id = c.id) AS item_count
-      FROM collections c ORDER BY c.name
+      FROM collections c ORDER BY c.name, c.id
     `).all();
   });
 
   app.post("/api/collections", async (req, reply) => {
-    const parsed = nameSchema.safeParse(req.body);
+    const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid name" });
+    const parent = parsed.data.parent_id ?? null;
+    if (parent !== null) {
+      const exists = db.prepare("SELECT id FROM collections WHERE id = ?").get(parent);
+      if (!exists) return reply.code(400).send({ error: "parent collection not found" });
+    }
     const id = newKey();
-    const parent = (req.body as { parent_id?: string })?.parent_id ?? null;
     db.prepare("INSERT INTO collections (id, parent_id, name) VALUES (?, ?, ?)").run(id, parent, parsed.data.name);
     return { id, parent_id: parent, name: parsed.data.name, item_count: 0 };
   });

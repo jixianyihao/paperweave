@@ -55,4 +55,20 @@ describe("collection routes", () => {
     expect(res.statusCode).toBe(400);
     await app.close();
   });
+
+  it("creates a nested collection with parent_id", async () => {
+    const { app } = await setup();
+    const parent = (await app.inject({ method: "POST", url: "/api/collections", payload: { name: "ML" } })).json();
+    const child = await app.inject({ method: "POST", url: "/api/collections", payload: { name: "LLM", parent_id: parent.id } });
+    expect(child.statusCode).toBe(200);
+    expect(child.json().parent_id).toBe(parent.id);
+    await app.close();
+  });
+
+  it("400s when parent_id does not exist", async () => {
+    const { app } = await setup();
+    const res = await app.inject({ method: "POST", url: "/api/collections", payload: { name: "X", parent_id: "NOPE" } });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
 });

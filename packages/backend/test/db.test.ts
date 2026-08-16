@@ -24,7 +24,15 @@ describe("openDb", () => {
     openDb(dir).close();
     const db = openDb(dir);
     const row = db.prepare("SELECT COUNT(*) AS n FROM _migrations").get() as { n: number };
-    expect(row.n).toBe(2);
+    expect(row.n).toBe(3);
+    db.close();
+  });
+
+  it("has metadata_status column after migrations", () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    const cols = (db.prepare("PRAGMA table_info(items)").all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toContain("metadata_status");
     db.close();
   });
 

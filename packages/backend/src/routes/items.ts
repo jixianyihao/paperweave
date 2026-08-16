@@ -16,6 +16,7 @@ export interface ItemRow {
   abstract: string | null;
   file_path: string | null;
   reading_status: "unread" | "reading" | "read";
+  metadata_status: "pending" | "complete" | "failed";
   starred: number;
   date_added: string;
   date_modified: string;

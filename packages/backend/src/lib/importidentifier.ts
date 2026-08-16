@@ -19,9 +19,9 @@ export function classifyInput(input: string): { kind: "doi" | "arxiv" | "url"; v
   if (DOI_RE.test(s)) return { kind: "doi", value: s };
   const ax = s.match(ARXIV_RE);
   if (ax) return { kind: "arxiv", value: ax[1] };
-  if (/^https?:\/\//i.test(s)) return { kind: "url", value: s };
   const doiInUrl = s.match(/(?:doi\.org\/)(10\.\d{4,9}\/[^\s]+)/i);
   if (doiInUrl) return { kind: "doi", value: doiInUrl[1] };
+  if (/^https?:\/\//i.test(s)) return { kind: "url", value: s };
   return null;
 }
 

@@ -85,6 +85,15 @@ describe("POST /api/import/identifier", () => {
     await app.close();
   });
 
+  it("classifies https://doi.org/... as a doi and resolves via crossref", async () => {
+    const { app } = await setup();
+    const res = await app.inject({ method: "POST", url: "/api/import/identifier", payload: { input: "https://doi.org/10.1000/xyz123" } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().item.title).toBe("Some DOI Paper");
+    expect(res.json().duplicate).toBe(false);
+    await app.close();
+  });
+
   it("400s on unrecognizable input", async () => {
     const { app } = await setup();
     const res = await app.inject({ method: "POST", url: "/api/import/identifier", payload: { input: "hello world" } });

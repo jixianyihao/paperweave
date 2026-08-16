@@ -8,8 +8,9 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "fastify": "^4.28.1",
     "better-sqlite3": "^11.3.0",
+    "fastify": "^4.28.1",
+    "pdfjs-dist": "^4.10.38",
     "zod": "^3.23.8"
   },
   "devDependencies": {

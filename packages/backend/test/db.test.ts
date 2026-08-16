@@ -24,7 +24,7 @@ describe("openDb", () => {
     openDb(dir).close();
     const db = openDb(dir);
     const row = db.prepare("SELECT COUNT(*) AS n FROM _migrations").get() as { n: number };
-    expect(row.n).toBe(1);
+    expect(row.n).toBe(2);
     db.close();
   });
 
@@ -33,6 +33,15 @@ describe("openDb", () => {
     const db = openDb(dir);
     const row = db.pragma("journal_mode") as { journal_mode: string }[];
     expect(row[0].journal_mode).toBe("wal");
+    db.close();
+  });
+
+  it("enforces foreign keys", () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    expect(() =>
+      db.prepare("INSERT INTO collection_items (collection_id, item_id) VALUES ('nope', 'nope')").run(),
+    ).toThrow();
     db.close();
   });
 });

@@ -20,6 +20,7 @@ export function openDb(dir: string = dataDir()): Database.Database {
   mkdirSync(join(dir, "files"), { recursive: true });
   const db = new Database(join(dir, "library.sqlite"));
   db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
   migrate(db);
   return db;
 }

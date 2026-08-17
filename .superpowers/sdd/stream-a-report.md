@@ -57,3 +57,48 @@
 ## 审查修复（2026-08-17，commit `025871a`）
 
 - **Important — builtin provider 路由不一致**：`resolveRoute()` → `fromProvider()` 把 kind=builtin 的 provider 行按 OpenAI 兼容处理、要求行上有 base_url 且不读 `PAPERWEAVE_BUILTIN_KEY/BASE`，而 `resolveProvider()`（`/providers/:id/test`）对同一行走 env 内置端点。用户把 builtin 服务商指给任务路由会报"缺少 base_url"，同行 /test 却成功。修复：`fromProvider` 遇到 `kind === "builtin"` 时委托 `fromBuiltinEnv()`，两条路径一致；解析结果保留行 id 以便 usage_log 归因。先写失败测试（builtin 行 + 任务路由 + env → resolveRoute 应成功）再修，全量 134 tests 绿、build 干净。
+
+---
+
+# 流 A（reader 桥接）完成报告 — PaperWeave 阶段 4+5
+
+分支：`worktree-agent-a385f984350530fa7`（基于契约提交 `a7bf9d1`）
+提交范围：`a7bf9d1..b2a112f`（3 个 commit：bridge+测试 / bootstrap 协议 / ready 信号修复）
+验证：`pnpm -F @paperweave/web test` → 14 files / 84 tests 全绿（含 13 个新桥用例）；`tsc -b` 干净；`pnpm build:reader` 通过。
+
+## 产出
+
+1. **`scripts/reader-bootstrap.js`（扩展）** — iframe 侧桥，按契约 流间接口 1：
+   - `ready`：轮询 `reader._primaryView.initializedPromise` 后发出。**关键发现**：此 reader 版本的 `Reader#initializedPromise` 上游从未 resolve（定义了 `_resolveInitializedPromise` 但无调用点），view 级 promise 才是真正的就绪信号。
+   - `selection` / `selectionCleared`：createReader 公开选项无选区钩子且不得改 vendor，故包装实例方法 `reader._updateState`，观察 `primaryViewSelectionPopup`（`{ rect: [x1,y1,x2,y2], annotation: { text, position } }`，清除时 undefined/null——见 `vendor/zotero-reader/src/common/reader.js` onSetSelectionPopup、`src/pdf/pdf-view.js` _handlePointerUp）。rect 转为契约 `{x,y,width,height}`；`page = position.pageIndex + 1`；`position` 原样透传。滚动时 view 会以新对象重发同一选区，按 `[text, page, position]` 去重。
+   - `jumpTo`：`position` 优先（`reader.navigate({ position })`），否则 `page` → `navigate({ pageIndex: page - 1 })`。
+   - `clearSelection`：`reader._lastView.clearSelection()`（view 方法，Reader 未暴露）。
+2. **`apps/web/src/reader/bridge.ts`** — 父窗口侧 `attachReaderBridge(iframe, handlers)`，契约签名逐字实现。入站校验：`event.source === iframe.contentWindow`、`data.source === "pw-reader"`、selection payload 类型校验；非法一律忽略。出站经 `postMessage(..., new URL(iframe.src).origin)`。dispose 后监听移除、jumpTo/clearSelection 变 no-op。
+3. **`apps/web/src/reader/bridge.test.ts`** — 13 个 jsdom 用例：协议解析、异源窗口/错误 source/非对象/未知 type/7 种畸形 selection 忽略、出站消息与 targetOrigin、dispose 清理、detached iframe 不抛错。TDD：先红（模块缺失）后绿。
+
+## 构建环境坑（未提交任何代理配置）
+
+- 子模块 clone / npm install 需 `https_proxy=http://127.0.0.1:7897`。
+- webpack 的 ZoteroLocalePlugin 用裸 Node https 从 raw.githubusercontent.com 下载 3 个 .ftl，不吃代理环境变量 → 超时。解决：curl 经代理预下载到 `vendor/zotero-reader/locales/en-US/` 并写 `locales/.signature`（值为 `.zotero-locale-commit` 的 hash），插件见 hash 未变即跳过。locales 是构建产物目录，非 vendor 源码修改。
+- 本机 5173 被另一 worktree 的 dev server 占用，本流 vite 实例在 5174——跨 worktree 调试时注意端口，否则 /reader/* 落到别的实例的 SPA fallback。
+
+## 手工验证（已执行）
+
+vite dev（5174）+ Playwright MCP，iframe 嵌 `/reader/reader.html?file=/samples/sample.pdf` + message 监听：
+1. 收到 `ready`。✓
+2. 鼠标真实拖选文本层 → 收到 `selection` `{text:"Attention Is A", page:1, rect:{x,y,width,height}, position:{pageIndex:0, rects:[[...]]}}`。✓
+3. 发 `pw-host clearSelection` → viewer DOM 选区清空 + 收到 `selectionCleared`。✓
+4. `jumpTo {page:3}` → pdfViewer 1→3；`jumpTo {position}`（回传步骤 2 的 position）→ 3→1。✓
+
+## 风险/注意
+
+- bootstrap 依赖 reader 内部结构（`_updateState`、`primaryViewSelectionPopup`、`_lastView.clearSelection`）——vendor 升级需回归验证；代码内已注释指向 vendor 源码位置。
+- `page` 是 pageIndex+1，不是 PDF pageLabel（契约未区分，取最简单）。
+- 分屏 secondary view 选区不桥接，仅 primary。
+- 留给流 B：浮动菜单定位需把 rect（iframe 视口坐标）加上 iframe 在页面中的偏移（契约已注明）。
+
+## 审查修复（2026-08-17，commit `18cab16`）
+
+- **Important — 滚动时浮动菜单锚点过期**：去重键原为 `[text, page, position]`，vendor 滚动时用更新后的 rect 重发同一 popup（pdf-view.js:294-298）被去重丢弃，宿主菜单停在旧位置。修复：rect 加入去重键 `[text, page, rect, position]`——rect 变化时重发 selection 事件（宿主自行决定更新菜单位置），完全相同的重发仍去重。
+- **Minor — unhandled rejection**：`reader.navigate(...)` 是 async，补 `Promise.resolve(...).catch(console.error)`；`waitForReady` 的 `view.initializedPromise` 补 rejection 分支（console.error），加载失败时宿主侧至少有日志。
+- **测试**：契约原豁免 bootstrap 单测，但去重属纯协议逻辑——在 bridge.test.ts 新增 `reader-bootstrap (iframe side)` 一组 7 用例：把 bootstrap 源码 eval 进 jsdom（fake createReader / fake window.parent），驱动 `_updateState` 验证 ready、payload 形态、同 rect 去重、**rect 变化重发**（先红后绿）、selectionCleared 只发一次、jumpTo page→pageIndex 与 clearSelection、navigate 拒绝无 unhandledrejection。全量 14 files / 91 tests 绿，tsc 干净，构建产物 bootstrap.js 已同步（cmp 一致）。

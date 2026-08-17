@@ -39,3 +39,10 @@
 - 每次 ask 新建 conversation（契约未要求多轮历史）；前端拿到 done 帧的 message_id 即可。
 - done 帧在契约字段（done/message_id/citations）之外附带 tokens_in/tokens_out，与既有 SSE 端点一致。
 - 关注： embedding 批量一次请求（个人库规模 OK）；超大文献（数千 chunks）时单请求 input 可能触 provider 上限，后续可分批。
+
+## 复审修复（bfdbbd1）
+
+1. **懒构建竞态**：`ensureChunks` 的插入事务内复查 `COUNT(*) > 0` 则跳过（better-sqlite3 事务同步执行，杜绝并发首 ask 双倍插入）；切块阶段 embedding 一律先置 NULL，由路由层统一嵌入/回填。新增测试：同一 item 并发两个 ask（Promise.all），断言 `(page, chunk_index)` 无重复。
+2. **embedding 错误透传**：`EmbedResult` 增加 `reason: "unconfigured" | "upstream"`；上游失败错误帧为 `embedding 调用失败: <真实错误>`（含 429 等状态），不再误报"未配置"；失败保留 NULL chunks，重试时回填成功。新增测试：429 → 错误帧含 429 且不含"未配置"、NULL 块保留、上游恢复后重试成功；网络 throw 同样按 upstream 处理。
+
+修复后：`pnpm -F @paperweave/backend test` 21 文件 / **169 tests 全绿**（+3）；build 干净。

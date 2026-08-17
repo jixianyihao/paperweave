@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -24,7 +24,8 @@ describe("openDb", () => {
     openDb(dir).close();
     const db = openDb(dir);
     const row = db.prepare("SELECT COUNT(*) AS n FROM _migrations").get() as { n: number };
-    expect(row.n).toBe(3);
+    const migrationFiles = readdirSync(join(import.meta.dirname, "..", "migrations")).filter((f) => f.endsWith(".sql"));
+    expect(row.n).toBe(migrationFiles.length);
     db.close();
   });
 

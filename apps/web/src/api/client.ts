@@ -1,7 +1,7 @@
 // 唯一允许的 API 出入口：组件一律通过 apiFetch（或 endpoints.ts 的封装）访问后端。
 // mock 模式：`?mock=1` 显式开启（记 sessionStorage，当次会话有效，可用顶栏标识退出）。
 // 额外安全网：仅 DEV 下的 GET 请求在网络失败时回退 mock；写操作网络失败一律抛错，绝不冒充后端。
-import { MockApiError, mockApiFetch } from "./mock";
+import { MockApiError, mockApiFetch, mockApiSse } from "./mock";
 
 const MOCK_STORAGE_KEY = "pw-mock";
 
@@ -105,4 +105,88 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
 
 export function jsonInit(method: string, body: unknown): RequestInit {
   return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
+// ---- SSE（阶段 4+5：AI 操作 / 追问 / 全文问答均为 text/event-stream）----
+
+/** 单条 SSE data 帧的通用形状；各端点附加字段见契约（done/error/annotation_id/message_id/citations…） */
+export interface SseFrame {
+  delta?: string;
+  done?: boolean;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface SseOptions {
+  /** 传入 AbortSignal 以支持中止（组件卸载时应 abort，避免卸载后继续 setState 与浪费 LLM 调用） */
+  signal?: AbortSignal;
+}
+
+export function isAbortError(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
+function abortError(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+
+/**
+ * SSE 统一入口（与 apiFetch 同级，组件不裸写 fetch）。
+ * POST JSON → 逐行解析 `data: {...}` 帧回调 onFrame；error 帧不抛异常，原样透传给调用方展示。
+ * HTTP 层错误（4xx/5xx/网络失败）抛 ApiError；signal 中止抛 AbortError（调用方用 isAbortError 识别后静默）。
+ */
+export async function apiSse(
+  path: string,
+  body: unknown,
+  onFrame: (frame: SseFrame) => void,
+  options?: SseOptions,
+): Promise<void> {
+  const signal = options?.signal;
+  if (signal?.aborted) throw abortError();
+  if (isMockMode()) return mockApiSse(path, body, onFrame, options);
+  let res: Response;
+  try {
+    res = await fetch(path, { ...jsonInit("POST", body), signal });
+  } catch (e) {
+    if (isAbortError(e)) throw e;
+    throw new ApiError(0, "无法连接后端服务，请确认后端已启动", e);
+  }
+  if (!res.ok) throw await parseError(res);
+  if (!res.body) throw new ApiError(0, "响应体不可流式读取");
+
+  const emitLine = (line: string) => {
+    const t = line.trim();
+    if (!t.startsWith("data:")) return;
+    const payload = t.slice(5).trim();
+    if (!payload) return;
+    try {
+      onFrame(JSON.parse(payload) as SseFrame);
+    } catch {
+      /* 非 JSON 帧忽略 */
+    }
+  };
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    if (signal?.aborted) {
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore */
+      }
+      throw abortError();
+    }
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      emitLine(buf.slice(0, idx));
+      buf = buf.slice(idx + 1);
+    }
+  }
+  buf += decoder.decode();
+  if (buf.trim()) emitLine(buf);
 }

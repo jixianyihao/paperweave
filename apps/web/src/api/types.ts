@@ -42,6 +42,43 @@ export interface Annotation {
   sort_index: number;
 }
 
+export interface Citation {
+  page: number;
+  quote: string;
+}
+
+export interface Conversation {
+  id: string;
+  annotation_id: string | null;
+  item_id: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations: string | null; // JSON: Citation[]
+  created_at: string;
+}
+
+export type ExplainLevel = "eli5" | "undergrad" | "grad" | "expert";
+
+export function parseCitations(json: string | null): Citation[] {
+  if (!json) return [];
+  try {
+    const parsed: unknown = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (c): c is Citation =>
+        !!c && typeof c === "object" && typeof (c as Citation).page === "number" && typeof (c as Citation).quote === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
 export type ProviderKind = "builtin" | "anthropic" | "openai" | "custom";
 
 export interface Provider {

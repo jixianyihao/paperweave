@@ -1,11 +1,15 @@
 // 契约端点的类型化封装；组件只调用这里或 apiFetch，绝不裸写 fetch。
-import { apiFetch, jsonInit } from "./client";
+import { apiFetch, apiSse, jsonInit, type SseFrame, type SseOptions } from "./client";
 import type {
   AiTask,
+  Annotation,
   Collection,
+  Conversation,
+  ExplainLevel,
   FileImportResult,
   IdentifierImportResult,
   Item,
+  Message,
   Provider,
   ProviderKind,
   Tag,
@@ -105,4 +109,80 @@ export function patchTaskRoute(task: AiTask, providerId: string | null, model: s
 
 export function getUsage(): Promise<UsageSummary> {
   return apiFetch<UsageSummary>("/api/usage");
+}
+
+// ---- A5 标注与时间流 ----
+
+export function listAnnotations(itemId: string): Promise<Annotation[]> {
+  return apiFetch<Annotation[]>(`/api/items/${encodeURIComponent(itemId)}/annotations`);
+}
+
+export interface CreateAnnotationInput {
+  type: Annotation["type"];
+  content: string;
+  page?: number | null;
+  position?: string | null;
+  color?: string | null;
+}
+
+export function createAnnotation(itemId: string, input: CreateAnnotationInput): Promise<Annotation> {
+  return apiFetch<Annotation>(`/api/items/${encodeURIComponent(itemId)}/annotations`, jsonInit("POST", input));
+}
+
+export function getConversation(id: string): Promise<{ conversation: Conversation; messages: Message[] }> {
+  return apiFetch<{ conversation: Conversation; messages: Message[] }>(
+    `/api/conversations/${encodeURIComponent(id)}`,
+  );
+}
+
+// ---- A6 AI SSE + 阶段4+5 追问/全文问答 ----
+
+export interface AiSelectionInput {
+  text: string;
+  itemId?: string;
+  page?: number | null;
+}
+
+export function aiSummarize(
+  input: AiSelectionInput & { level?: "brief" | "bullets" },
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse("/api/ai/summarize", input, onFrame, opts);
+}
+
+export function aiExplain(
+  input: AiSelectionInput & { level?: ExplainLevel },
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse("/api/ai/explain", input, onFrame, opts);
+}
+
+export function aiTranslate(
+  input: AiSelectionInput & { targetLang?: "zh" | "en" },
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse("/api/ai/translate", input, onFrame, opts);
+}
+
+/** 追问：创建/复用该标注的 conversation，SSE 流式返回 assistant 回复 */
+export function sendAnnotationMessage(
+  annotationId: string,
+  content: string,
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse(`/api/annotations/${encodeURIComponent(annotationId)}/messages`, { content }, onFrame, opts);
+}
+
+/** 全文问答（流 C 端点）：done 帧带 citations */
+export function askItem(
+  itemId: string,
+  question: string,
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse(`/api/items/${encodeURIComponent(itemId)}/ask`, { question }, onFrame, opts);
 }

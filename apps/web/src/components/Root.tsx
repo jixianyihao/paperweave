@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import CommandPalette from "./CommandPalette";
 import ImportDialog from "./ImportDialog";
+import MockBadge from "./MockBadge";
 import Toasts from "./Toasts";
 import { useGlobalImportDrop } from "../hooks/useGlobalImportDrop";
 import { useUiStore } from "../stores/uiStore";
@@ -32,6 +33,7 @@ export default function Root() {
       <CommandPalette />
       <ImportDialog />
       <Toasts />
+      <MockBadge />
     </>
   );
 }

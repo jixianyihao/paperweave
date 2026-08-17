@@ -1,5 +1,5 @@
 // 契约端点的类型化封装；组件只调用这里或 apiFetch，绝不裸写 fetch。
-import { apiFetch, apiSse, jsonInit, type SseFrame } from "./client";
+import { apiFetch, apiSse, jsonInit, type SseFrame, type SseOptions } from "./client";
 import type {
   AiTask,
   Annotation,
@@ -146,22 +146,25 @@ export interface AiSelectionInput {
 export function aiSummarize(
   input: AiSelectionInput & { level?: "brief" | "bullets" },
   onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
 ): Promise<void> {
-  return apiSse("/api/ai/summarize", input, onFrame);
+  return apiSse("/api/ai/summarize", input, onFrame, opts);
 }
 
 export function aiExplain(
   input: AiSelectionInput & { level?: ExplainLevel },
   onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
 ): Promise<void> {
-  return apiSse("/api/ai/explain", input, onFrame);
+  return apiSse("/api/ai/explain", input, onFrame, opts);
 }
 
 export function aiTranslate(
   input: AiSelectionInput & { targetLang?: "zh" | "en" },
   onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
 ): Promise<void> {
-  return apiSse("/api/ai/translate", input, onFrame);
+  return apiSse("/api/ai/translate", input, onFrame, opts);
 }
 
 /** 追问：创建/复用该标注的 conversation，SSE 流式返回 assistant 回复 */
@@ -169,11 +172,17 @@ export function sendAnnotationMessage(
   annotationId: string,
   content: string,
   onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
 ): Promise<void> {
-  return apiSse(`/api/annotations/${encodeURIComponent(annotationId)}/messages`, { content }, onFrame);
+  return apiSse(`/api/annotations/${encodeURIComponent(annotationId)}/messages`, { content }, onFrame, opts);
 }
 
 /** 全文问答（流 C 端点）：done 帧带 citations */
-export function askItem(itemId: string, question: string, onFrame: (f: SseFrame) => void): Promise<void> {
-  return apiSse(`/api/items/${encodeURIComponent(itemId)}/ask`, { question }, onFrame);
+export function askItem(
+  itemId: string,
+  question: string,
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse(`/api/items/${encodeURIComponent(itemId)}/ask`, { question }, onFrame, opts);
 }

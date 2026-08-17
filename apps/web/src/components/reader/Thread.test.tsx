@@ -105,4 +105,31 @@ describe("Thread 追问线程", () => {
     fireEvent.change(screen.getByLabelText("追问输入"), { target: { value: "q2" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeEnabled());
   });
+
+  test("组件卸载时中止进行中的流（fetch 收到 signal abort）", async () => {
+    let captured: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        captured = init?.signal as AbortSignal | undefined;
+        return new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('data: {"delta":"…"}\n\n'));
+              // 永不关闭，模拟长流
+            },
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+    const { unmount } = renderThread();
+    fireEvent.click(screen.getByRole("button", { name: /追问/ }));
+    fireEvent.change(screen.getByLabelText("追问输入"), { target: { value: "q1" } });
+    fireEvent.click(screen.getByRole("button", { name: "发送" }));
+    await waitFor(() => expect(captured).toBeTruthy());
+    expect(captured!.aborted).toBe(false);
+    unmount();
+    expect(captured!.aborted).toBe(true);
+  });
 });

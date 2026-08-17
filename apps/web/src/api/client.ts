@@ -117,17 +117,38 @@ export interface SseFrame {
   [key: string]: unknown;
 }
 
+export interface SseOptions {
+  /** 传入 AbortSignal 以支持中止（组件卸载时应 abort，避免卸载后继续 setState 与浪费 LLM 调用） */
+  signal?: AbortSignal;
+}
+
+export function isAbortError(e: unknown): boolean {
+  return e instanceof DOMException && e.name === "AbortError";
+}
+
+function abortError(): DOMException {
+  return new DOMException("The operation was aborted.", "AbortError");
+}
+
 /**
  * SSE 统一入口（与 apiFetch 同级，组件不裸写 fetch）。
  * POST JSON → 逐行解析 `data: {...}` 帧回调 onFrame；error 帧不抛异常，原样透传给调用方展示。
- * HTTP 层错误（4xx/5xx/网络失败）抛 ApiError。
+ * HTTP 层错误（4xx/5xx/网络失败）抛 ApiError；signal 中止抛 AbortError（调用方用 isAbortError 识别后静默）。
  */
-export async function apiSse(path: string, body: unknown, onFrame: (frame: SseFrame) => void): Promise<void> {
-  if (isMockMode()) return mockApiSse(path, body, onFrame);
+export async function apiSse(
+  path: string,
+  body: unknown,
+  onFrame: (frame: SseFrame) => void,
+  options?: SseOptions,
+): Promise<void> {
+  const signal = options?.signal;
+  if (signal?.aborted) throw abortError();
+  if (isMockMode()) return mockApiSse(path, body, onFrame, options);
   let res: Response;
   try {
-    res = await fetch(path, jsonInit("POST", body));
+    res = await fetch(path, { ...jsonInit("POST", body), signal });
   } catch (e) {
+    if (isAbortError(e)) throw e;
     throw new ApiError(0, "无法连接后端服务，请确认后端已启动", e);
   }
   if (!res.ok) throw await parseError(res);
@@ -149,6 +170,14 @@ export async function apiSse(path: string, body: unknown, onFrame: (frame: SseFr
   const decoder = new TextDecoder();
   let buf = "";
   for (;;) {
+    if (signal?.aborted) {
+      try {
+        await reader.cancel();
+      } catch {
+        /* ignore */
+      }
+      throw abortError();
+    }
     const { done, value } = await reader.read();
     if (done) break;
     buf += decoder.decode(value, { stream: true });

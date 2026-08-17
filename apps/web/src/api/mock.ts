@@ -12,7 +12,7 @@ import type {
   TaskRoute,
   UsageSummary,
 } from "./types";
-import type { SseFrame } from "./client";
+import type { SseFrame, SseOptions } from "./client";
 
 interface MockDb {
   items: Item[];
@@ -467,16 +467,25 @@ function nowStamp(): string {
   return "2026-08-17 10:30:00";
 }
 
-async function streamText(text: string, onFrame: (f: SseFrame) => void): Promise<void> {
+async function streamText(text: string, onFrame: (f: SseFrame) => void, signal?: AbortSignal): Promise<void> {
   // 按 ~8 字切片模拟流式增量
   for (let i = 0; i < text.length; i += 8) {
+    if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
     await new Promise((r) => setTimeout(r, 2));
+    if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
     onFrame({ delta: text.slice(i, i + 8) });
   }
 }
 
 /** 模拟 SSE 端点：/api/ai/{summarize,explain,translate}、/api/annotations/:id/messages、/api/items/:id/ask */
-export async function mockApiSse(path: string, body: unknown, onFrame: (f: SseFrame) => void): Promise<void> {
+export async function mockApiSse(
+  path: string,
+  body: unknown,
+  onFrame: (f: SseFrame) => void,
+  options?: SseOptions,
+): Promise<void> {
+  const signal = options?.signal;
+  if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
   await new Promise((r) => setTimeout(r, 5));
   const p = new URL(path, "http://mock.local").pathname;
   const b = body as Record<string, unknown>;
@@ -485,7 +494,7 @@ export async function mockApiSse(path: string, body: unknown, onFrame: (f: SseFr
   if (aiMatch) {
     const kind = aiMatch[1];
     const label = kind === "summarize" ? "摘要" : kind === "explain" ? "解释" : "翻译";
-    await streamText(`（mock ${label}）这是针对所选内容的流式${label}结果。`, onFrame);
+    await streamText(`（mock ${label}）这是针对所选内容的流式${label}结果。`, onFrame, signal);
     let annotationId: string | undefined;
     const itemId = typeof b.itemId === "string" ? b.itemId : null;
     const item = itemId ? db.items.find((i) => i.id === itemId) : undefined;
@@ -513,14 +522,14 @@ export async function mockApiSse(path: string, body: unknown, onFrame: (f: SseFr
 
   const msgMatch = p.match(/^\/api\/annotations\/([^/]+)\/messages$/);
   if (msgMatch) {
-    await streamText("（mock 追问）这是对所选片段的进一步解释，详见 [P1] 与 [P2] 的相关段落。", onFrame);
+    await streamText("（mock 追问）这是对所选片段的进一步解释，详见 [P1] 与 [P2] 的相关段落。", onFrame, signal);
     onFrame({ done: true, tokens_in: 20, tokens_out: 40, message_id: newKey() });
     return;
   }
 
   const askMatch = p.match(/^\/api\/items\/([^/]+)\/ask$/);
   if (askMatch) {
-    await streamText("（mock 问答）Transformer 的核心是自注意力机制 [P1]，它摒弃了循环结构 [P2]。", onFrame);
+    await streamText("（mock 问答）Transformer 的核心是自注意力机制 [P1]，它摒弃了循环结构 [P2]。", onFrame, signal);
     onFrame({
       done: true,
       message_id: newKey(),

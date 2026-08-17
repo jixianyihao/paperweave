@@ -1,7 +1,8 @@
 // 追问线程：AI 条目就地展开对话（契约 流B-4）。
 // 注意：后端只提供 POST /api/annotations/:id/messages（创建/复用 conversation，SSE 返回），
 // 没有按 annotation 查历史 conversation 的端点，因此线程历史为会话内本地状态（V1 取舍，见流 B 报告）。
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { isAbortError } from "../../api/client";
 import { sendAnnotationMessage } from "../../api/endpoints";
 import { useReaderBridge } from "../../reader/bridgeContext";
 import { CitedText } from "./citations";
@@ -22,6 +23,12 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  /** 进行中请求的 AbortController；卸载时 abort，避免卸载后 setState 与浪费 LLM 调用 */
+  const aborterRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => aborterRef.current?.abort();
+  }, []);
 
   const onCite = bridge ? (page: number) => bridge.jumpTo({ page }) : undefined;
 
@@ -31,6 +38,8 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
     if (!content || streaming) return;
     setInput("");
     setStreaming(true);
+    const aborter = new AbortController();
+    aborterRef.current = aborter;
     seq += 1;
     const userId = seq;
     seq += 1;
@@ -43,16 +52,23 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
     const patch = (f: (m: ThreadMessage) => ThreadMessage) =>
       setMessages((ms) => ms.map((m) => (m.id === assistantId ? f(m) : m)));
     try {
-      await sendAnnotationMessage(annotationId, content, (frame) => {
-        if (typeof frame.delta === "string") {
-          patch((m) => ({ ...m, content: m.content + frame.delta }));
-        } else if (typeof frame.error === "string") {
-          patch((m) => ({ ...m, content: frame.error as string, error: true }));
-        }
-      });
+      await sendAnnotationMessage(
+        annotationId,
+        content,
+        (frame) => {
+          if (typeof frame.delta === "string") {
+            patch((m) => ({ ...m, content: m.content + frame.delta }));
+          } else if (typeof frame.error === "string") {
+            patch((m) => ({ ...m, content: frame.error as string, error: true }));
+          }
+        },
+        { signal: aborter.signal },
+      );
     } catch (err) {
+      if (isAbortError(err)) return; // 卸载中止，静默
       patch((m) => ({ ...m, content: err instanceof Error ? err.message : "请求失败", error: true }));
     } finally {
+      aborterRef.current = null;
       patch((m) => ({ ...m, pending: false }));
       setStreaming(false);
     }

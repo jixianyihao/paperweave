@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isMockMode } from "./api/client";
-import type { SseFrame } from "./api/client";
+import { isAbortError, type SseFrame, type SseOptions } from "./api/client";
 import {
   aiExplain,
   aiSummarize,
@@ -66,6 +66,27 @@ export default function ReaderPage() {
   const [asking, setAsking] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bridgeRef = useRef<ReturnType<typeof attachReaderBridge> | null>(null);
+  /** 进行中 SSE 请求的 AbortController 集合；卸载时统一 abort */
+  const abortersRef = useRef<Set<AbortController>>(new Set());
+
+  // 卸载：中止全部进行中的流（避免卸载后 setState 与浪费 LLM 调用）
+  useEffect(() => {
+    const aborters = abortersRef.current;
+    return () => {
+      for (const c of aborters) c.abort();
+      aborters.clear();
+    };
+  }, []);
+
+  const newAborter = useCallback((): AbortController => {
+    const c = new AbortController();
+    abortersRef.current.add(c);
+    return c;
+  }, []);
+
+  const releaseAborter = useCallback((c: AbortController) => {
+    abortersRef.current.delete(c);
+  }, []);
 
   // 加载条目
   useEffect(() => {
@@ -145,20 +166,22 @@ export default function ReaderPage() {
     setLocalEntries((es) => es.map((e) => (e.id === id ? f(e) : e)));
   }, []);
 
-  const refetchAnnotations = useCallback(async (id: string) => {
+  /** 重拉标注列表；返回是否成功（失败时调用方须保留本地条目） */
+  const refetchAnnotations = useCallback(async (id: string): Promise<boolean> => {
     try {
       setAnnotations(await listAnnotations(id));
+      return true;
     } catch {
-      /* 保留本地条目 */
+      return false;
     }
   }, []);
 
-  /** 摘要/解释/翻译共用：本地 pending 条目流式填充；done 后以后端落的 annotation 为准（重拉列表） */
+  /** 摘要/解释/翻译共用：本地 pending 条目流式填充；done 后重拉成功才撤本地条目，失败保留并轻提示 */
   const runAiAction = useCallback(
     async (
       type: Annotation["type"],
       sel: ReaderSelection,
-      call: (onFrame: (f: SseFrame) => void) => Promise<void>,
+      call: (onFrame: (f: SseFrame) => void, opts: SseOptions) => Promise<void>,
     ) => {
       if (!readyItem) return;
       dismissMenu();
@@ -176,37 +199,50 @@ export default function ReaderPage() {
           pending: true,
         },
       ]);
+      const aborter = newAborter();
       let hadError = false;
       try {
-        await call((frame) => {
-          if (typeof frame.delta === "string") {
-            patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
-          } else if (typeof frame.error === "string") {
-            hadError = true;
-            patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
-          }
-        });
-        // 正常结束：后端已落 annotation（done 帧带 annotation_id）→ 重拉列表并撤掉本地临时条目
+        await call(
+          (frame) => {
+            if (typeof frame.delta === "string") {
+              patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
+            } else if (typeof frame.error === "string") {
+              hadError = true;
+              patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
+            }
+          },
+          { signal: aborter.signal },
+        );
         if (!hadError) {
-          setLocalEntries((es) => es.filter((e) => e.id !== localId));
-          void refetchAnnotations(readyItem.id);
+          // 后端已落 annotation（done 帧带 annotation_id）：重拉成功才撤本地条目；
+          // 重拉失败则保留本地流式结果（pending:false），避免用户刚看的内容消失
+          const ok = await refetchAnnotations(readyItem.id);
+          if (ok) {
+            setLocalEntries((es) => es.filter((e) => e.id !== localId));
+          } else {
+            patchLocal(localId, (e) => ({ ...e, pending: false }));
+            pushToast("时间流同步失败，以上结果为临时展示", "error");
+          }
         }
       } catch (err) {
+        if (isAbortError(err)) return; // 卸载中止，静默
         patchLocal(localId, (e) => ({
           ...e,
           pending: false,
           error: err instanceof Error ? err.message : "请求失败",
         }));
+      } finally {
+        releaseAborter(aborter);
       }
     },
-    [readyItem, dismissMenu, patchLocal, refetchAnnotations],
+    [readyItem, dismissMenu, patchLocal, refetchAnnotations, newAborter, releaseAborter, pushToast],
   );
 
   const onSummarize = useCallback(() => {
     if (!selection || !readyItem) return;
     const { sel } = selection;
-    void runAiAction("ai_summary", sel, (onFrame) =>
-      aiSummarize({ text: sel.text, itemId: readyItem.id, page: sel.page }, onFrame),
+    void runAiAction("ai_summary", sel, (onFrame, opts) =>
+      aiSummarize({ text: sel.text, itemId: readyItem.id, page: sel.page }, onFrame, opts),
     );
   }, [selection, readyItem, runAiAction]);
 
@@ -214,8 +250,8 @@ export default function ReaderPage() {
     (level: ExplainLevel) => {
       if (!selection || !readyItem) return;
       const { sel } = selection;
-      void runAiAction("ai_explain", sel, (onFrame) =>
-        aiExplain({ text: sel.text, level, itemId: readyItem.id, page: sel.page }, onFrame),
+      void runAiAction("ai_explain", sel, (onFrame, opts) =>
+        aiExplain({ text: sel.text, level, itemId: readyItem.id, page: sel.page }, onFrame, opts),
       );
     },
     [selection, readyItem, runAiAction],
@@ -224,8 +260,8 @@ export default function ReaderPage() {
   const onTranslate = useCallback(() => {
     if (!selection || !readyItem) return;
     const { sel } = selection;
-    void runAiAction("ai_translate", sel, (onFrame) =>
-      aiTranslate({ text: sel.text, itemId: readyItem.id, page: sel.page }, onFrame),
+    void runAiAction("ai_translate", sel, (onFrame, opts) =>
+      aiTranslate({ text: sel.text, itemId: readyItem.id, page: sel.page }, onFrame, opts),
     );
   }, [selection, readyItem, runAiAction]);
 
@@ -299,26 +335,36 @@ export default function ReaderPage() {
           pending: true,
         },
       ]);
-      void askItem(readyItem.id, question, (frame) => {
-        if (typeof frame.delta === "string") {
-          patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
-        } else if (typeof frame.error === "string") {
-          patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
-        } else if (frame.done) {
-          const citations = Array.isArray(frame.citations) ? (frame.citations as Citation[]) : undefined;
-          patchLocal(localId, (e) => ({ ...e, pending: false, citations }));
-        }
-      })
-        .catch((err) =>
+      const aborter = newAborter();
+      void askItem(
+        readyItem.id,
+        question,
+        (frame) => {
+          if (typeof frame.delta === "string") {
+            patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
+          } else if (typeof frame.error === "string") {
+            patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
+          } else if (frame.done) {
+            const citations = Array.isArray(frame.citations) ? (frame.citations as Citation[]) : undefined;
+            patchLocal(localId, (e) => ({ ...e, pending: false, citations }));
+          }
+        },
+        { signal: aborter.signal },
+      )
+        .catch((err) => {
+          if (isAbortError(err)) return; // 卸载中止，静默
           patchLocal(localId, (e) => ({
             ...e,
             pending: false,
             error: err instanceof Error ? err.message : "请求失败",
-          })),
-        )
-        .finally(() => setAsking(false));
+          }));
+        })
+        .finally(() => {
+          releaseAborter(aborter);
+          setAsking(false);
+        });
     },
-    [readyItem, asking, patchLocal],
+    [readyItem, asking, patchLocal, newAborter, releaseAborter],
   );
 
   const entries = useMemo(

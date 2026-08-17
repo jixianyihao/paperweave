@@ -79,6 +79,44 @@ describe("apiSse（真实模式，fake fetch 流）", () => {
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ text: "t", level: "grad" });
   });
+
+  test("signal 透传给 fetch；abort 使流中断并抛 AbortError", async () => {
+    let captured: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        captured = init?.signal as AbortSignal | undefined;
+        const stream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('data: {"delta":"x"}\n\n'));
+            // 永不关闭；abort 时按真实 fetch 语义让 read 失败
+            init?.signal?.addEventListener("abort", () =>
+              controller.error(new DOMException("The operation was aborted.", "AbortError")),
+            );
+          },
+        });
+        return new Response(stream, { status: 200 });
+      }),
+    );
+    const ac = new AbortController();
+    const frames: SseFrame[] = [];
+    const p = apiSse("/api/ai/summarize", { text: "x" }, (f) => frames.push(f), { signal: ac.signal });
+    ac.abort();
+    await expect(p).rejects.toMatchObject({ name: "AbortError" });
+    expect(captured?.aborted).toBe(true);
+  });
+
+  test("mock 模式同样尊重 signal（abort 后抛 AbortError，停止吐帧）", async () => {
+    enableMockMode();
+    const ac = new AbortController();
+    const frames: SseFrame[] = [];
+    const p = apiSse("/api/ai/summarize", { text: "x" }, (f) => {
+      frames.push(f);
+      ac.abort(); // 第一帧后立即中止
+    }, { signal: ac.signal });
+    await expect(p).rejects.toMatchObject({ name: "AbortError" });
+    expect(frames.length).toBeLessThan(3); // 没有继续流完全部内容
+  });
 });
 
 describe("SSE 端点封装（mock 模式）", () => {

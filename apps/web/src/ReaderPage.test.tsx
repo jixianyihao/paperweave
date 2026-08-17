@@ -3,10 +3,29 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { disableMockMode, enableMockMode } from "./api/client";
 import { resetMockData } from "./api/mock";
+import { useToastStore } from "./stores/toastStore";
 import ReaderPage from "./ReaderPage";
 import { lastMockBridge, resetMockBridges } from "./reader/__mocks__/bridge";
 
 vi.mock("./reader/bridge", async () => await import("./reader/__mocks__/bridge"));
+
+const ITEM_JSON = {
+  id: "attn0001",
+  title: "Attention Is All You Need",
+  creators: "[]",
+  year: 2017,
+  venue: null,
+  doi: null,
+  arxiv_id: null,
+  url: null,
+  abstract: null,
+  file_path: "files/attn0001.pdf",
+  reading_status: "read",
+  starred: 1,
+  metadata_status: "complete",
+  date_added: "2026-08-10 10:00:00",
+  date_modified: "2026-08-10 10:00:00",
+};
 
 function renderReader(itemId: string) {
   return render(
@@ -28,8 +47,12 @@ const SEL = {
 beforeEach(() => {
   resetMockData();
   resetMockBridges();
+  useToastStore.getState().clear();
   enableMockMode();
-  return () => disableMockMode();
+  return () => {
+    disableMockMode();
+    vi.unstubAllGlobals();
+  };
 });
 
 describe("ReaderPage 布局与加载", () => {
@@ -204,5 +227,83 @@ describe("ReaderPage 全文问答", () => {
     expect(chips.length).toBeGreaterThan(0);
     fireEvent.click(chips[0]);
     expect(lastMockBridge()!.jumpToCalls.some((c) => typeof c.page === "number")).toBe(true);
+  });
+});
+
+describe("ReaderPage 流中止与失败保留（审查修复）", () => {
+  test("卸载页面时中止进行中的 AI 流（fetch 收到 signal abort）", async () => {
+    disableMockMode();
+    let captured: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/api/items/attn0001") return new Response(JSON.stringify(ITEM_JSON), { status: 200 });
+        if (url === "/api/items/attn0001/annotations") return new Response("[]", { status: 200 });
+        if (url === "/api/ai/summarize") {
+          captured = init?.signal as AbortSignal | undefined;
+          return new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(new TextEncoder().encode('data: {"delta":"流式中"}\n\n'));
+                // 永不关闭
+              },
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response("not found", { status: 404 });
+      }),
+    );
+    const { unmount } = renderReader("attn0001");
+    await waitFor(() => expect(lastMockBridge()).toBeTruthy());
+    act(() => lastMockBridge()!.emitSelection(SEL));
+    fireEvent.click(screen.getByRole("menuitem", { name: "摘要" }));
+    await waitFor(() => expect(captured).toBeTruthy());
+    expect(captured!.aborted).toBe(false);
+    unmount();
+    expect(captured!.aborted).toBe(true);
+  });
+
+  test("SSE 成功后重拉标注失败：保留本地流式条目并轻提示（不丢内容）", async () => {
+    disableMockMode();
+    let annCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === "/api/items/attn0001") return new Response(JSON.stringify(ITEM_JSON), { status: 200 });
+        if (url === "/api/items/attn0001/annotations") {
+          annCalls += 1;
+          // 首次加载正常；动作后的重拉失败
+          if (annCalls === 1) return new Response("[]", { status: 200 });
+          return new Response(JSON.stringify({ error: "db busy" }), { status: 500 });
+        }
+        if (url === "/api/ai/summarize") {
+          const stream = new ReadableStream<Uint8Array>({
+            start(controller) {
+              const enc = new TextEncoder();
+              controller.enqueue(enc.encode('data: {"delta":"刚生成的摘要"}\n\n'));
+              controller.enqueue(enc.encode('data: {"done":true,"annotation_id":"srv-ann-1"}\n\n'));
+              controller.close();
+            },
+          });
+          return new Response(stream, { status: 200 });
+        }
+        return new Response("not found", { status: 404 });
+      }),
+    );
+    renderReader("attn0001");
+    await waitFor(() => expect(lastMockBridge()).toBeTruthy());
+    act(() => lastMockBridge()!.emitSelection(SEL));
+    fireEvent.click(screen.getByRole("menuitem", { name: "摘要" }));
+    // 重拉失败 → 本地条目保留（内容可见、不再 pending）
+    await waitFor(() => expect(screen.getByText(/刚生成的摘要/)).toBeInTheDocument());
+    await waitFor(() => expect(annCalls).toBeGreaterThan(1));
+    await waitFor(() => {
+      const el = screen.getByText(/刚生成的摘要/).closest("[data-entry-id]")!;
+      expect(el.querySelector("[data-streaming]")).toBeNull();
+    });
+    expect(useToastStore.getState().toasts.length).toBeGreaterThan(0);
   });
 });

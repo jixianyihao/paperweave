@@ -1,6 +1,8 @@
 // 手写 mock 后端：`?mock=1` 或真实请求网络失败时接管全部 /api 调用，
 // 让完整流程（列表/筛选/搜索/导入/设置）在没有后端时也可演示。
 import type {
+  AiTask,
+  Annotation,
   Collection,
   FileImportResult,
   IdentifierImportResult,
@@ -9,8 +11,8 @@ import type {
   Tag,
   TaskRoute,
   UsageSummary,
-  AiTask,
 } from "./types";
+import type { SseFrame } from "./client";
 
 interface MockDb {
   items: Item[];
@@ -22,6 +24,7 @@ interface MockDb {
   tagItems: Map<string, Set<string>>;
   providers: Provider[];
   taskRoutes: TaskRoute[];
+  annotations: Annotation[];
   keySeq: number;
 }
 
@@ -149,7 +152,53 @@ function seed(): MockDb {
   const taskRoutes: TaskRoute[] = (
     ["translate", "summarize", "explain", "qa", "voice", "embedding"] as AiTask[]
   ).map((task) => ({ task, provider_id: null, model: null }));
-  return { items, collections, collectionItems, tags, tagItems, providers, taskRoutes, keySeq: 100 };
+  const annotations: Annotation[] = [
+    {
+      id: "ann-mock-1",
+      item_id: "attn0001",
+      type: "highlight",
+      page: 1,
+      position: null,
+      content: "The Transformer is the first transduction model relying entirely on self-attention.",
+      color: "yellow",
+      created_at: "2026-08-10 12:00:00",
+      sort_index: 0,
+    },
+    {
+      id: "ann-mock-2",
+      item_id: "attn0001",
+      type: "note",
+      page: 1,
+      position: null,
+      content: "开篇立论：抛弃循环与卷积，全靠注意力。",
+      color: null,
+      created_at: "2026-08-10 12:05:00",
+      sort_index: 1,
+    },
+    {
+      id: "ann-mock-3",
+      item_id: "attn0001",
+      type: "ai_summary",
+      page: 2,
+      position: null,
+      content: "（mock）本页提出多头注意力结构，并给出缩放点积注意力的定义。",
+      color: null,
+      created_at: "2026-08-10 12:10:00",
+      sort_index: 0,
+    },
+    {
+      id: "ann-mock-4",
+      item_id: "attn0001",
+      type: "voice_digest",
+      page: 4,
+      position: null,
+      content: "（mock）语音速览：实验在两个机器翻译任务上取得 SOTA。",
+      color: null,
+      created_at: "2026-08-10 12:20:00",
+      sort_index: 0,
+    },
+  ];
+  return { items, collections, collectionItems, tags, tagItems, providers, taskRoutes, annotations, keySeq: 100 };
 }
 
 let db = seed();
@@ -372,5 +421,116 @@ export async function mockApiFetch<T>(path: string, init?: RequestInit): Promise
     return usage as T;
   }
 
+  // ---- annotations（阶段 4+5：阅读器时间流）----
+  const annMatch = p.match(/^\/api\/items\/([^/]+)\/annotations$/);
+  if (annMatch && method === "GET") {
+    const item = db.items.find((i) => i.id === annMatch[1]);
+    if (!item) throw new MockApiError(404, "item not found");
+    return db.annotations
+      .filter((a) => a.item_id === annMatch[1])
+      .map((a) => ({ ...a }))
+      .sort(
+        (a, b) =>
+          (a.page ?? Number.MAX_SAFE_INTEGER) - (b.page ?? Number.MAX_SAFE_INTEGER) ||
+          a.sort_index - b.sort_index ||
+          a.created_at.localeCompare(b.created_at) ||
+          a.id.localeCompare(b.id),
+      ) as T;
+  }
+  if (annMatch && method === "POST") {
+    const item = db.items.find((i) => i.id === annMatch[1]);
+    if (!item) throw new MockApiError(404, "item not found");
+    const type = String(body.type ?? "");
+    const content = String(body.content ?? "").trim();
+    if (!content) throw new MockApiError(400, "invalid annotation");
+    const annotation: Annotation = {
+      id: newKey(),
+      item_id: item.id,
+      type: type as Annotation["type"],
+      page: typeof body.page === "number" ? body.page : null,
+      position: typeof body.position === "string" ? body.position : null,
+      content,
+      color: typeof body.color === "string" ? body.color : null,
+      created_at: "2026-08-17 10:00:00",
+      sort_index: db.annotations.filter((a) => a.item_id === item.id && a.page === body.page).length,
+    };
+    db.annotations.push(annotation);
+    return { ...annotation } as T;
+  }
+
   throw new MockApiError(404, `mock: no route for ${method} ${p}`);
+}
+
+// ---- SSE mock（阶段 4+5）：与真实端点帧形状一致，便于无后端演示流式交互 ----
+
+function nowStamp(): string {
+  return "2026-08-17 10:30:00";
+}
+
+async function streamText(text: string, onFrame: (f: SseFrame) => void): Promise<void> {
+  // 按 ~8 字切片模拟流式增量
+  for (let i = 0; i < text.length; i += 8) {
+    await new Promise((r) => setTimeout(r, 2));
+    onFrame({ delta: text.slice(i, i + 8) });
+  }
+}
+
+/** 模拟 SSE 端点：/api/ai/{summarize,explain,translate}、/api/annotations/:id/messages、/api/items/:id/ask */
+export async function mockApiSse(path: string, body: unknown, onFrame: (f: SseFrame) => void): Promise<void> {
+  await new Promise((r) => setTimeout(r, 5));
+  const p = new URL(path, "http://mock.local").pathname;
+  const b = body as Record<string, unknown>;
+
+  const aiMatch = p.match(/^\/api\/ai\/(summarize|explain|translate)$/);
+  if (aiMatch) {
+    const kind = aiMatch[1];
+    const label = kind === "summarize" ? "摘要" : kind === "explain" ? "解释" : "翻译";
+    await streamText(`（mock ${label}）这是针对所选内容的流式${label}结果。`, onFrame);
+    let annotationId: string | undefined;
+    const itemId = typeof b.itemId === "string" ? b.itemId : null;
+    const item = itemId ? db.items.find((i) => i.id === itemId) : undefined;
+    if (item) {
+      const type = (
+        kind === "summarize" ? "ai_summary" : kind === "explain" ? "ai_explain" : "ai_translate"
+      ) as Annotation["type"];
+      const annotation: Annotation = {
+        id: newKey(),
+        item_id: item.id,
+        type,
+        page: typeof b.page === "number" ? b.page : null,
+        position: null,
+        content: `（mock ${label}）这是针对所选内容的流式${label}结果。`,
+        color: null,
+        created_at: nowStamp(),
+        sort_index: 0,
+      };
+      db.annotations.push(annotation);
+      annotationId = annotation.id;
+    }
+    onFrame({ done: true, tokens_in: 12, tokens_out: 34, ...(annotationId ? { annotation_id: annotationId } : {}) });
+    return;
+  }
+
+  const msgMatch = p.match(/^\/api\/annotations\/([^/]+)\/messages$/);
+  if (msgMatch) {
+    await streamText("（mock 追问）这是对所选片段的进一步解释，详见 [P1] 与 [P2] 的相关段落。", onFrame);
+    onFrame({ done: true, tokens_in: 20, tokens_out: 40, message_id: newKey() });
+    return;
+  }
+
+  const askMatch = p.match(/^\/api\/items\/([^/]+)\/ask$/);
+  if (askMatch) {
+    await streamText("（mock 问答）Transformer 的核心是自注意力机制 [P1]，它摒弃了循环结构 [P2]。", onFrame);
+    onFrame({
+      done: true,
+      message_id: newKey(),
+      citations: [
+        { page: 1, quote: "The Transformer is the first transduction model relying entirely on self-attention…" },
+        { page: 2, quote: "We propose a new simple network architecture, the Transformer…" },
+      ],
+    });
+    return;
+  }
+
+  throw new MockApiError(404, `mock: no SSE route for ${p}`);
 }

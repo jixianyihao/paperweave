@@ -253,8 +253,8 @@ export async function mockApiFetch<T>(path: string, init?: RequestInit): Promise
   }
 
   // ---- collections / tags ----
-  if (method === "GET" && p === "/api/collections") return db.collections as T;
-  if (method === "GET" && p === "/api/tags") return db.tags as T;
+  if (method === "GET" && p === "/api/collections") return db.collections.map((c) => ({ ...c })) as T;
+  if (method === "GET" && p === "/api/tags") return db.tags.map((t) => ({ ...t })) as T;
   const colItemsMatch = p.match(/^\/api\/collections\/([^/]+)\/items$/);
   if (method === "GET" && colItemsMatch) {
     return filterItems(new URLSearchParams({ collection: colItemsMatch[1] })) as T;
@@ -300,7 +300,8 @@ export async function mockApiFetch<T>(path: string, init?: RequestInit): Promise
   }
 
   // ---- providers ----
-  if (method === "GET" && p === "/api/providers") return db.providers as T;
+  // 注意：返回数组副本而非内部引用，避免调用方 setState 拿到同一引用导致 React 跳过重渲染
+  if (method === "GET" && p === "/api/providers") return [...db.providers] as T;
   if (method === "POST" && p === "/api/providers") {
     const kind = String(body.kind ?? "");
     const label = String(body.label ?? "").trim();
@@ -357,7 +358,7 @@ export async function mockApiFetch<T>(path: string, init?: RequestInit): Promise
   }
 
   // ---- task routes / usage ----
-  if (method === "GET" && p === "/api/task-routes") return db.taskRoutes as T;
+  if (method === "GET" && p === "/api/task-routes") return db.taskRoutes.map((r) => ({ ...r })) as T;
   if (method === "PATCH" && p === "/api/task-routes") {
     const task = String(body.task ?? "");
     const route = db.taskRoutes.find((r) => r.task === task);

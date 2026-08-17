@@ -39,7 +39,7 @@ describe("Thread 追问线程", () => {
   });
 
   test("发送后 user 消息立即上屏，assistant 回复 SSE 流式追加", async () => {
-    const fetchSpy = vi.fn(async () =>
+    const fetchSpy = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       sseResponse([{ delta: "这是" }, { delta: "回答" }, { done: true, message_id: "m1" }]),
     );
     vi.stubGlobal("fetch", fetchSpy);
@@ -83,14 +83,14 @@ describe("Thread 追问线程", () => {
   });
 
   test("流式进行中禁止重复发送", async () => {
-    let resolveStream: (() => void) | null = null;
+    const gate: { resolve?: () => void } = {};
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
         const stream = new ReadableStream<Uint8Array>({
           start(controller) {
             controller.enqueue(new TextEncoder().encode('data: {"delta":"…"}\n\n'));
-            resolveStream = () => controller.close();
+            gate.resolve = () => controller.close();
           },
         });
         return new Response(stream, { status: 200 });
@@ -101,7 +101,7 @@ describe("Thread 追问线程", () => {
     fireEvent.change(screen.getByLabelText("追问输入"), { target: { value: "q1" } });
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeDisabled());
-    resolveStream?.();
+    gate.resolve?.();
     fireEvent.change(screen.getByLabelText("追问输入"), { target: { value: "q2" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "发送" })).toBeEnabled());
   });

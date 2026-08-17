@@ -16,7 +16,7 @@ function sseResponse(frames: string[]): Response {
 }
 
 function stubSseFetch(frames: string[]) {
-  const spy = vi.fn(async () => sseResponse(frames));
+  const spy = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => sseResponse(frames));
   vi.stubGlobal("fetch", spy);
   return spy;
 }

@@ -45,9 +45,12 @@ export function sortEntries(entries: TimelineEntry[]): TimelineEntry[] {
 export default function Timeline({
   entries,
   onJump,
+  openThreadId = null,
 }: {
   entries: TimelineEntry[];
   onJump: (entry: TimelineEntry) => void;
+  /** 新建的追问条目 id：其 Thread 挂载时默认展开 */
+  openThreadId?: string | null;
 }) {
   const bridge = useReaderBridge();
   const sorted = useMemo(() => sortEntries(entries), [entries]);
@@ -99,7 +102,10 @@ export default function Timeline({
               </div>
             )}
             {e.citations && <CitationChips citations={e.citations} onCite={onCite} />}
-            {isAi && !e.pending && !e.error && <Thread annotationId={e.id} />}
+            {/* 只有已落库的 ai_* 标注（非 local-* 临时条目）才能挂追问线程 */}
+            {isAi && !e.pending && !e.error && !e.id.startsWith("local-") && (
+              <Thread annotationId={e.id} defaultOpen={e.id === openThreadId} />
+            )}
           </li>
         );
       })}

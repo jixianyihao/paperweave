@@ -22,24 +22,27 @@ export function useGlobalImportDrop(): void {
         push("只支持 PDF 文件", "error");
         return;
       }
-      for (const file of files) {
-        void (async () => {
-          try {
-            const result = await importFile(file);
-            push(
-              result.duplicate
-                ? `重复条目：${result.item.title}`
-                : result.metadata_status === "complete"
-                  ? `已导入：${result.item.title}`
-                  : `已导入：${result.item.title}（元数据抓取失败）`,
-              result.metadata_status === "complete" || result.duplicate ? "success" : "error",
-            );
-          } catch (err) {
-            push(`导入失败：${err instanceof ApiError ? err.message : file.name}`, "error");
-          }
-        })();
-      }
-      void useLibraryStore.getState().refresh();
+      // 等全部上传结束后统一刷新列表，避免竞态导致新条目不显示
+      void (async () => {
+        await Promise.all(
+          files.map(async (file) => {
+            try {
+              const result = await importFile(file);
+              push(
+                result.duplicate
+                  ? `重复条目：${result.item.title}`
+                  : result.metadata_status === "complete"
+                    ? `已导入：${result.item.title}`
+                    : `已导入：${result.item.title}（元数据抓取失败）`,
+                result.metadata_status === "complete" || result.duplicate ? "success" : "error",
+              );
+            } catch (err) {
+              push(`导入失败：${err instanceof ApiError ? err.message : file.name}`, "error");
+            }
+          }),
+        );
+        await useLibraryStore.getState().refresh();
+      })();
     };
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("drop", onDrop);

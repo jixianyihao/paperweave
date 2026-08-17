@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { attachReaderBridge, type ReaderSelection } from "./bridge";
 
 function makeIframe(): HTMLIFrameElement {
@@ -178,5 +180,186 @@ describe("attachReaderBridge", () => {
       bridge.clearSelection();
       bridge.dispose();
     }).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Iframe side: scripts/reader-bootstrap.js
+//
+// The bootstrap is a plain browser script (copied next to reader.html by
+// build-reader.sh), so these tests eval it into the jsdom window with a fake
+// createReader and a fake parent window, then drive the reader's internal
+// _updateState the way vendor/zotero-reader does. The contract exempts the
+// reader-internal probing from unit tests, but the selection-popup dedupe is
+// pure protocol logic and is covered here (review finding: rect must be part
+// of the dedupe key, otherwise the host's floating menu anchor goes stale
+// when the view re-emits the popup with an updated rect during scrolling).
+// ---------------------------------------------------------------------------
+
+// vitest runs with cwd = apps/web; the bootstrap lives at <repo>/scripts.
+const bootstrapSrc = readFileSync(
+  resolve(process.cwd(), "../../scripts/reader-bootstrap.js"),
+  "utf8",
+);
+
+interface FakePopup {
+  rect: [number, number, number, number];
+  annotation: { text: string; position: { pageIndex: number; rects: number[][] } };
+}
+
+function makePopup(
+  rect: [number, number, number, number],
+  text = "hello",
+): FakePopup {
+  return {
+    rect,
+    annotation: { text, position: { pageIndex: 0, rects: [[1, 2, 3, 4]] } },
+  };
+}
+
+describe("reader-bootstrap (iframe side)", () => {
+  let parentPost: ReturnType<typeof vi.fn>;
+  let fakeReader: {
+    _updateState: ReturnType<typeof vi.fn>;
+    _primaryView: { initializedPromise: Promise<void> };
+    _lastView: { clearSelection: ReturnType<typeof vi.fn> };
+    navigate: ReturnType<typeof vi.fn>;
+  };
+  let originalParent: PropertyDescriptor | undefined;
+
+  const selectionPosts = () =>
+    parentPost.mock.calls
+      .map((c) => c[0])
+      .filter((m) => m.type === "selection" || m.type === "selectionCleared");
+
+  function boot() {
+    window.history.replaceState(
+      {},
+      "",
+      "/reader/reader.html?file=/samples/sample.pdf",
+    );
+    window.eval(bootstrapSrc);
+    window.dispatchEvent(new Event("DOMContentLoaded"));
+  }
+
+  beforeEach(() => {
+    parentPost = vi.fn();
+    originalParent = Object.getOwnPropertyDescriptor(window, "parent");
+    Object.defineProperty(window, "parent", {
+      configurable: true,
+      value: { postMessage: parentPost },
+    });
+    fakeReader = {
+      _updateState: vi.fn(),
+      _primaryView: { initializedPromise: Promise.resolve() },
+      _lastView: { clearSelection: vi.fn() },
+      navigate: vi.fn(),
+    };
+    // Mirrors upstream createReader: refuses to run twice.
+    (window as unknown as Record<string, unknown>).createReader = vi.fn(() => {
+      if ((window as unknown as Record<string, unknown>)._reader) {
+        throw new Error("Reader is already initialized");
+      }
+      (window as unknown as Record<string, unknown>)._reader = fakeReader;
+      return fakeReader;
+    });
+  });
+
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>)._reader;
+    delete (window as unknown as Record<string, unknown>).createReader;
+    if (originalParent) {
+      Object.defineProperty(window, "parent", originalParent);
+    }
+    window.history.replaceState({}, "", "/");
+  });
+
+  it("posts ready once the primary view initializes", async () => {
+    boot();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(parentPost).toHaveBeenCalledWith(
+      { source: "pw-reader", type: "ready" },
+      "*",
+    );
+  });
+
+  it("posts selection with contract payload shape", () => {
+    boot();
+    fakeReader._updateState({ primaryViewSelectionPopup: makePopup([10, 20, 110, 36]) });
+    const posts = selectionPosts();
+    expect(posts).toHaveLength(1);
+    expect(posts[0]).toEqual({
+      source: "pw-reader",
+      type: "selection",
+      payload: {
+        text: "hello",
+        page: 1,
+        rect: { x: 10, y: 20, width: 100, height: 16 },
+        position: { pageIndex: 0, rects: [[1, 2, 3, 4]] },
+      },
+    });
+  });
+
+  it("dedupes the identical popup re-emitted during scrolling", () => {
+    boot();
+    const popup = makePopup([10, 20, 110, 36]);
+    // The view emits a NEW object with the same content while scrolling.
+    fakeReader._updateState({ primaryViewSelectionPopup: popup });
+    fakeReader._updateState({ primaryViewSelectionPopup: makePopup([10, 20, 110, 36]) });
+    expect(selectionPosts()).toHaveLength(1);
+  });
+
+  it("re-posts selection when the rect changes (scroll anchor update)", () => {
+    boot();
+    fakeReader._updateState({ primaryViewSelectionPopup: makePopup([10, 20, 110, 36]) });
+    fakeReader._updateState({ primaryViewSelectionPopup: makePopup([10, 5, 110, 21]) });
+    const posts = selectionPosts();
+    expect(posts).toHaveLength(2);
+    expect(posts[1].payload.rect).toEqual({ x: 10, y: 5, width: 100, height: 16 });
+  });
+
+  it("posts selectionCleared once when the popup goes away", () => {
+    boot();
+    fakeReader._updateState({ primaryViewSelectionPopup: makePopup([10, 20, 110, 36]) });
+    fakeReader._updateState({ primaryViewSelectionPopup: undefined });
+    fakeReader._updateState({ primaryViewSelectionPopup: undefined });
+    const posts = selectionPosts();
+    expect(posts).toHaveLength(2);
+    expect(posts[1]).toEqual({ source: "pw-reader", type: "selectionCleared" });
+  });
+
+  it("answers pw-host jumpTo (page → pageIndex) and clearSelection", async () => {
+    boot();
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { source: "pw-host", type: "jumpTo", payload: { page: 3 } },
+        source: window.parent as unknown as Window,
+      }),
+    );
+    expect(fakeReader.navigate).toHaveBeenCalledWith({ pageIndex: 2 });
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { source: "pw-host", type: "clearSelection" },
+        source: window.parent as unknown as Window,
+      }),
+    );
+    expect(fakeReader._lastView.clearSelection).toHaveBeenCalled();
+  });
+
+  it("a rejecting navigate does not produce an unhandled rejection", async () => {
+    boot();
+    fakeReader.navigate.mockRejectedValue(new Error("boom"));
+    const onUnhandled = vi.fn();
+    window.addEventListener("unhandledrejection", onUnhandled);
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        data: { source: "pw-host", type: "jumpTo", payload: { page: 3 } },
+        source: window.parent as unknown as Window,
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 20));
+    expect(onUnhandled).not.toHaveBeenCalled();
+    window.removeEventListener("unhandledrejection", onUnhandled);
   });
 });

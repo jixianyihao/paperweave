@@ -82,7 +82,10 @@ window.addEventListener('DOMContentLoaded', () => {
 	};
 
 	// Dedupe key: the view re-emits the popup (new object identity, same
-	// selection) while the page scrolls.
+	// selection) while the page scrolls. The rect is part of the key so a
+	// scroll-updated rect re-fires the selection event — the host needs it
+	// to keep its floating menu anchored to the moving text. Identical
+	// re-emissions (same selection, same rect) are still deduped.
 	let lastSelectionKey = null;
 	const handleSelectionPopup = (popup) => {
 		const sel = normalizePopup(popup);
@@ -93,7 +96,7 @@ window.addEventListener('DOMContentLoaded', () => {
 			}
 			return;
 		}
-		const key = JSON.stringify([sel.text, sel.page, sel.position]);
+		const key = JSON.stringify([sel.text, sel.page, sel.rect, sel.position]);
 		if (key === lastSelectionKey) {
 			return;
 		}
@@ -128,13 +131,19 @@ window.addEventListener('DOMContentLoaded', () => {
 			try {
 				if (data.type === 'jumpTo' && data.payload) {
 					const { page, position } = data.payload;
+					let navigation = null;
 					if (position) {
-						reader.navigate({ position });
+						navigation = reader.navigate({ position });
 					}
 					else if (typeof page === 'number' && Number.isFinite(page)) {
 						// Contract pages are 1-based; pdf-view navigate takes pageIndex.
-						reader.navigate({ pageIndex: page - 1 });
+						navigation = reader.navigate({ pageIndex: page - 1 });
 					}
+					// navigate is async; without a catch a failed jump is an
+					// unhandled rejection in the iframe.
+					Promise.resolve(navigation).catch((e) => {
+						console.error('[paperweave] jumpTo failed', e);
+					});
 				}
 				else if (data.type === 'clearSelection') {
 					// clearSelection is a view method (pdf-view.js), not exposed on
@@ -190,7 +199,10 @@ window.addEventListener('DOMContentLoaded', () => {
 	(function waitForReady() {
 		const view = reader._primaryView;
 		if (view && view.initializedPromise) {
-			view.initializedPromise.then(() => postToHost({ type: 'ready' }));
+			view.initializedPromise.then(
+				() => postToHost({ type: 'ready' }),
+				(e) => console.error('[paperweave] reader view failed to initialize', e),
+			);
 		}
 		else {
 			setTimeout(waitForReady, 100);

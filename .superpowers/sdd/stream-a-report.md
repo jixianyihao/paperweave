@@ -96,3 +96,9 @@ vite dev（5174）+ Playwright MCP，iframe 嵌 `/reader/reader.html?file=/sampl
 - `page` 是 pageIndex+1，不是 PDF pageLabel（契约未区分，取最简单）。
 - 分屏 secondary view 选区不桥接，仅 primary。
 - 留给流 B：浮动菜单定位需把 rect（iframe 视口坐标）加上 iframe 在页面中的偏移（契约已注明）。
+
+## 审查修复（2026-08-17，commit `18cab16`）
+
+- **Important — 滚动时浮动菜单锚点过期**：去重键原为 `[text, page, position]`，vendor 滚动时用更新后的 rect 重发同一 popup（pdf-view.js:294-298）被去重丢弃，宿主菜单停在旧位置。修复：rect 加入去重键 `[text, page, rect, position]`——rect 变化时重发 selection 事件（宿主自行决定更新菜单位置），完全相同的重发仍去重。
+- **Minor — unhandled rejection**：`reader.navigate(...)` 是 async，补 `Promise.resolve(...).catch(console.error)`；`waitForReady` 的 `view.initializedPromise` 补 rejection 分支（console.error），加载失败时宿主侧至少有日志。
+- **测试**：契约原豁免 bootstrap 单测，但去重属纯协议逻辑——在 bridge.test.ts 新增 `reader-bootstrap (iframe side)` 一组 7 用例：把 bootstrap 源码 eval 进 jsdom（fake createReader / fake window.parent），驱动 `_updateState` 验证 ready、payload 形态、同 rect 去重、**rect 变化重发**（先红后绿）、selectionCleared 只发一次、jumpTo page→pageIndex 与 clearSelection、navigate 拒绝无 unhandledrejection。全量 14 files / 91 tests 绿，tsc 干净，构建产物 bootstrap.js 已同步（cmp 一致）。

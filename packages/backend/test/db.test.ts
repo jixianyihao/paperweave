@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, rmSync, existsSync, writeFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, rmSync, existsSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -94,6 +94,15 @@ describe("dataDir", () => {
     expect(resolved.endsWith(join("data"))).toBe(true);
     const parent = resolved.slice(0, -"data".length).replace(/[/\\]$/, "");
     expect(existsSync(join(parent, "pnpm-workspace.yaml"))).toBe(true);
-    expect(existsSync(resolved)).toBe(false); // test must not create the real dir
+  });
+
+  it("walks up to the workspace root without creating dirs", () => {
+    const root = mkdtempSync(join(tmpdir(), "pw-root-"));
+    writeFileSync(join(root, "pnpm-workspace.yaml"), "packages: []");
+    mkdirSync(join(root, "a", "b"), { recursive: true });
+    const resolved = resolveDataDir(join(root, "a", "b"));
+    expect(resolved).toBe(join(root, "data"));
+    expect(existsSync(resolved)).toBe(false); // resolution must not create the dir
+    rmSync(root, { recursive: true, force: true });
   });
 });

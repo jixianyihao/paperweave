@@ -9,6 +9,14 @@ export interface PdfHints {
   firstText: string;
 }
 
+const DOI_TRAILING = new Set([".", ",", ";", ")", "]"]);
+
+export function cleanDoi(s: string): string {
+  let out = s;
+  while (out.length > 0 && DOI_TRAILING.has(out[out.length - 1])) out = out.slice(0, -1);
+  return out;
+}
+
 export async function extractPdfHints(pdfBytes: Uint8Array): Promise<PdfHints> {
   const none: PdfHints = { doi: null, arxivId: null, firstText: "" };
   let text = "";
@@ -24,7 +32,8 @@ export async function extractPdfHints(pdfBytes: Uint8Array): Promise<PdfHints> {
   } catch {
     return none;
   }
-  const doi = text.match(DOI_RE)?.[1] ?? null;
+  const doiMatch = text.match(DOI_RE)?.[1] ?? null;
+  const doi = doiMatch ? cleanDoi(doiMatch) : null;
   const arxivId = text.match(ARXIV_RE)?.[1] ?? null;
   return { doi, arxivId, firstText: text.slice(0, 2000) };
 }

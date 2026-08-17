@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../src/db.js";
@@ -61,8 +61,9 @@ describe("POST /api/import/file", () => {
     const form = multipart();
     const res = await app.inject({ method: "POST", url: "/api/import/file", payload: form.getBuffer(), headers: form.getHeaders() });
     expect(res.statusCode).toBe(200);
-    const { item, metadata_status } = res.json();
+    const { item, metadata_status, duplicate } = res.json();
     expect(metadata_status).toBe("complete");
+    expect(duplicate).toBe(false);
     expect(item.title).toBe("Attention Is All You Need");
     expect(item.year).toBe(2017);
     expect(item.file_path).toBe(`files/${item.id}.pdf`);
@@ -76,9 +77,27 @@ describe("POST /api/import/file", () => {
     const form = multipart();
     const res = await app.inject({ method: "POST", url: "/api/import/file", payload: form.getBuffer(), headers: form.getHeaders() });
     expect(res.statusCode).toBe(200);
-    const { item, metadata_status } = res.json();
+    const { item, metadata_status, duplicate } = res.json();
     expect(metadata_status).toBe("failed");
+    expect(duplicate).toBe(false);
     expect(item.title).toBe("attention");
+    await app.close();
+  });
+
+  it("returns the existing item without writing a second file when the same pdf is imported twice", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const app = buildServer(openDb(dir), { dataDir: dir, fetchImpl: fetchOk() });
+    const form1 = multipart();
+    const first = await app.inject({ method: "POST", url: "/api/import/file", payload: form1.getBuffer(), headers: form1.getHeaders() });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().duplicate).toBe(false);
+    const form2 = multipart();
+    const second = await app.inject({ method: "POST", url: "/api/import/file", payload: form2.getBuffer(), headers: form2.getHeaders() });
+    expect(second.statusCode).toBe(200);
+    expect(second.json().duplicate).toBe(true);
+    expect(second.json().item.id).toBe(first.json().item.id);
+    const files = readdirSync(join(dir, "files"));
+    expect(files).toHaveLength(1);
     await app.close();
   });
 

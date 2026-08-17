@@ -4,11 +4,13 @@ import { join } from "node:path";
 import { newKey } from "./keys.js";
 import { extractPdfHints } from "./pdfhints.js";
 import { fetchByDoi, fetchByArxiv, type PaperMeta, type FetchLike } from "./metadata.js";
+import { findDuplicate } from "./importidentifier.js";
 import type { ItemRow } from "../routes/items.js";
 
 export interface ImportResult {
   item: ItemRow;
   metadata_status: "complete" | "failed";
+  duplicate: boolean;
 }
 
 export function applyMeta(db: Database.Database, id: string, meta: PaperMeta): void {
@@ -63,11 +65,27 @@ export async function importPdf(
   fetchImpl: FetchLike,
 ): Promise<ImportResult> {
   const provisional = filename.replace(/\.pdf$/i, "");
+
+  const hints = await extractPdfHints(pdfBytes);
+
+  // 先查重：doi / arxiv_id 命中已有条目时直接返回，不落盘、不插行
+  const dup = findDuplicate(db, {
+    creators: [],
+    doi: hints.doi ?? undefined,
+    arxivId: hints.arxivId ?? undefined,
+  });
+  if (dup) {
+    return {
+      item: dup,
+      metadata_status: dup.metadata_status === "complete" ? "complete" : "failed",
+      duplicate: true,
+    };
+  }
+
   const id = newKey();
   const filePath = `files/${id}.pdf`;
   writeFileSync(join(dataDir, filePath), pdfBytes);
 
-  const hints = await extractPdfHints(pdfBytes);
   insertItemRow(db, { id, title: provisional, filePath, doi: hints.doi, arxivId: hints.arxivId });
 
   let meta: PaperMeta | null = null;
@@ -80,5 +98,5 @@ export async function importPdf(
     db.prepare("UPDATE items SET metadata_status = 'failed' WHERE id = ?").run(id);
   }
   const row = db.prepare("SELECT * FROM items WHERE id = ?").get(id) as ItemRow;
-  return { item: row, metadata_status: row.metadata_status === "complete" ? "complete" : "failed" };
+  return { item: row, metadata_status: row.metadata_status === "complete" ? "complete" : "failed", duplicate: false };
 }

@@ -16,7 +16,7 @@ export type FetchLike = typeof fetch;
 
 export async function fetchByDoi(doi: string, fetchImpl: FetchLike = fetch): Promise<PaperMeta | null> {
   try {
-    const res = await fetchImpl(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+    const res = await fetchImpl(`https://api.crossref.org/works/${encodeURIComponent(doi)}`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const { message: m } = await res.json();
     if (!m?.title?.[0]) return null;
@@ -38,15 +38,18 @@ export async function fetchByDoi(doi: string, fetchImpl: FetchLike = fetch): Pro
 
 export async function fetchByArxiv(arxivId: string, fetchImpl: FetchLike = fetch): Promise<PaperMeta | null> {
   try {
-    const res = await fetchImpl(`https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`);
+    const res = await fetchImpl(`https://export.arxiv.org/api/query?id_list=${encodeURIComponent(arxivId)}`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const xml = await res.text();
     const parsed = new XMLParser({ ignoreAttributes: true }).parse(xml);
     const entry = parsed?.feed?.entry;
     if (!entry?.title) return null;
+    const title = String(entry.title).replace(/\s+/g, " ").trim();
+    // arXiv 对不存在的 id 返回一条 id 指向 /api/errors、标题为 "Error" 的 entry
+    if (!String(entry.id ?? "").includes("arxiv.org/abs/") || title === "Error") return null;
     const authors = Array.isArray(entry.author) ? entry.author : [entry.author];
     return {
-      title: String(entry.title).replace(/\s+/g, " ").trim(),
+      title,
       creators: authors.filter(Boolean).map((a: { name: string }) => a.name),
       year: entry.published ? Number(String(entry.published).slice(0, 4)) : undefined,
       arxivId,
@@ -61,7 +64,7 @@ export async function fetchByArxiv(arxivId: string, fetchImpl: FetchLike = fetch
 
 export async function fetchByUrl(url: string, fetchImpl: FetchLike = fetch): Promise<PaperMeta | null> {
   try {
-    const res = await fetchImpl(url);
+    const res = await fetchImpl(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const html = await res.text();
     const tags = new Map<string, string[]>();

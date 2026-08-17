@@ -85,6 +85,42 @@ describe("POST /api/import/identifier", () => {
     await app.close();
   });
 
+  it("detects duplicates by doi case-insensitively", async () => {
+    const { db, app } = await setup();
+    db.prepare("INSERT INTO items (id, title, doi, metadata_status) VALUES ('existing1', 'Existing', '10.1000/XYZ123', 'complete')").run();
+    const res = await app.inject({ method: "POST", url: "/api/import/identifier", payload: { input: "10.1000/xyz123" } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().duplicate).toBe(true);
+    expect(res.json().item.id).toBe("existing1");
+    await app.close();
+  });
+
+  it("rejects pdf downloads larger than 100MB", async () => {
+    const huge = new Uint8Array(100 * 1024 * 1024 + 1);
+    huge.set(new TextEncoder().encode("%PDF-"), 0);
+    const hugeBuf = huge.buffer;
+    const fetchHuge = (async (url: unknown) => {
+      const u = String(url);
+      if (u.includes("export.arxiv.org")) {
+        return { ok: true, status: 200, text: async () => arxivXml, arrayBuffer: async () => new ArrayBuffer(0) };
+      }
+      if (u.includes("arxiv.org/pdf")) {
+        return { ok: true, status: 200, text: async () => "", arrayBuffer: async () => hugeBuf };
+      }
+      return { ok: false, status: 404, text: async () => "", arrayBuffer: async () => new ArrayBuffer(0) };
+    }) as unknown as typeof fetch;
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    const app = buildServer(db, { dataDir: dir, fetchImpl: fetchHuge });
+    const res = await app.inject({ method: "POST", url: "/api/import/identifier", payload: { input: "1706.03762" } });
+    expect(res.statusCode).toBe(200);
+    const { item, pdf_downloaded } = res.json();
+    expect(pdf_downloaded).toBe(false);
+    expect(item.file_path).toBeNull();
+    expect(existsSync(join(dir, "files", `${item.id}.pdf`))).toBe(false);
+    await app.close();
+  });
+
   it("classifies https://doi.org/... as a doi and resolves via crossref", async () => {
     const { app } = await setup();
     const res = await app.inject({ method: "POST", url: "/api/import/identifier", payload: { input: "https://doi.org/10.1000/xyz123" } });

@@ -25,9 +25,9 @@ export function classifyInput(input: string): { kind: "doi" | "arxiv" | "url"; v
   return null;
 }
 
-function findDuplicate(db: Database.Database, meta: PaperMeta): ItemRow | null {
+export function findDuplicate(db: Database.Database, meta: PaperMeta): ItemRow | null {
   if (meta.doi) {
-    const row = db.prepare("SELECT * FROM items WHERE doi = ?").get(meta.doi) as ItemRow | undefined;
+    const row = db.prepare("SELECT * FROM items WHERE doi = ? COLLATE NOCASE").get(meta.doi) as ItemRow | undefined;
     if (row) return row;
   }
   if (meta.arxivId) {
@@ -37,13 +37,16 @@ function findDuplicate(db: Database.Database, meta: PaperMeta): ItemRow | null {
   return null;
 }
 
+const MAX_PDF_BYTES = 100 * 1024 * 1024;
+
 async function tryDownloadPdf(
   pdfUrl: string, dataDir: string, itemId: string, fetchImpl: FetchLike,
 ): Promise<string | null> {
   try {
-    const res = await fetchImpl(pdfUrl);
+    const res = await fetchImpl(pdfUrl, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength > MAX_PDF_BYTES) return null;
     // 校验 %PDF 魔数，过滤掉 HTML 错误页等非 PDF 响应
     if (buf.byteLength < 5 || String.fromCharCode(...buf.subarray(0, 5)) !== "%PDF-") return null;
     const filePath = `files/${itemId}.pdf`;

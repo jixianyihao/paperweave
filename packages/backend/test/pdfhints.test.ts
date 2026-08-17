@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { extractPdfHints } from "../src/lib/pdfhints.js";
+import { extractPdfHints, cleanDoi } from "../src/lib/pdfhints.js";
 
 const sample = new Uint8Array(
   readFileSync(join(import.meta.dirname, "../../../apps/web/public/samples/sample.pdf")),
@@ -18,5 +18,19 @@ describe("extractPdfHints", () => {
     const hints = await extractPdfHints(new Uint8Array([37, 80, 68, 70])); // "%PDF" garbage
     expect(hints.doi).toBeNull();
     expect(hints.arxivId).toBeNull();
+  });
+});
+
+describe("cleanDoi", () => {
+  it("strips trailing punctuation", () => {
+    expect(cleanDoi("10.1000/xyz123).")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/xyz123,")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/xyz123;")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/xyz123]")).toBe("10.1000/xyz123");
+    expect(cleanDoi("10.1000/xyz123")).toBe("10.1000/xyz123");
+  });
+
+  it("keeps interior punctuation that is part of the doi", () => {
+    expect(cleanDoi("10.1000/x(1)y_z")).toBe("10.1000/x(1)y_z");
   });
 });

@@ -72,6 +72,19 @@ describe("fetchByArxiv", () => {
     expect(meta?.year).toBe(2017);
     expect(meta?.pdfUrl).toBe("https://arxiv.org/pdf/1706.03762");
   });
+
+  it("returns null for an arXiv Error entry (nonexistent id)", async () => {
+    const errorXml = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>http://arxiv.org/api/errors#nonexistent_id</id>
+    <title>Error</title>
+    <summary>nonexistent id 9999.99999</summary>
+    <author><name>arXiv api</name></author>
+  </entry>
+</feed>`;
+    expect(await fetchByArxiv("9999.99999", fakeFetch(errorXml))).toBeNull();
+  });
 });
 
 describe("fetchByUrl", () => {

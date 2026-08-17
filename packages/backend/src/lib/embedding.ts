@@ -6,7 +6,8 @@ export const EMBEDDING_UNCONFIGURED = "未配置 embedding 模型，全文问答
 
 export type EmbedResult =
   | { ok: true; vectors: Float32Array[] }
-  | { ok: false; error: string };
+  // reason 区分"未配置路由"与"上游瞬时失败"，调用方据此决定错误帧文案与是否可重试
+  | { ok: false; reason: "unconfigured" | "upstream"; error: string };
 
 export function vectorToBlob(v: Float32Array): Buffer {
   return Buffer.from(v.buffer, v.byteOffset, v.byteLength);
@@ -31,9 +32,9 @@ export async function embedTexts(
 ): Promise<EmbedResult> {
   if (texts.length === 0) return { ok: true, vectors: [] };
   const resolved = resolveRoute(db, "embedding");
-  if (!resolved.ok) return { ok: false, error: EMBEDDING_UNCONFIGURED };
+  if (!resolved.ok) return { ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED };
   const { llm } = resolved;
-  if (llm.client !== "openai") return { ok: false, error: EMBEDDING_UNCONFIGURED };
+  if (llm.client !== "openai") return { ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED };
   try {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (llm.apiKey) headers.authorization = `Bearer ${llm.apiKey}`;
@@ -60,6 +61,7 @@ export async function embedTexts(
         typeof json.usage?.prompt_tokens === "number" ? json.usage.prompt_tokens : null, null);
     return { ok: true, vectors: vectors as Float32Array[] };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: "upstream", error: `embedding 调用失败: ${msg}` };
   }
 }

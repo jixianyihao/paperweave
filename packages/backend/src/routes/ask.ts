@@ -7,7 +7,7 @@ import { newKey } from "../lib/keys.js";
 import { startSse } from "../lib/sse.js";
 import { streamTask } from "../lib/llm/router.js";
 import { extractPages, chunkPages } from "../lib/chunking.js";
-import { embedTexts, vectorToBlob, blobToVector, EMBEDDING_UNCONFIGURED } from "../lib/embedding.js";
+import { embedTexts, vectorToBlob, blobToVector } from "../lib/embedding.js";
 import { topK, fullTextQaMessages, parseCitations } from "../lib/ask.js";
 import type { FetchLike } from "../lib/metadata.js";
 import type { ItemRow } from "./items.js";
@@ -34,7 +34,7 @@ function loadChunks(db: Database.Database, itemId: string): ChunkRow[] {
   return db.prepare("SELECT * FROM chunks WHERE item_id = ? ORDER BY page, chunk_index").all(itemId) as ChunkRow[];
 }
 
-// 懒构建：首次 ask 时抽取全文 → 切块 → （若已配置 embedding 路由）批量嵌入
+// 懒构建：首次 ask 时抽取全文 → 切块（embedding 一律先置 NULL，由路由层统一嵌入/回填）
 async function ensureChunks(
   db: Database.Database,
   item: ItemRow,
@@ -50,13 +50,12 @@ async function ensureChunks(
   const pages = await extractPages(new Uint8Array(readFileSync(abs)));
   const drafts = chunkPages(pages);
   if (drafts.length === 0) return { ok: false, error: "无法从 PDF 提取文本，全文问答不可用" };
-  const embedded = await embedTexts(db, drafts.map((d) => d.text), { fetchImpl: deps.fetchImpl });
-  const vectors = embedded.ok ? embedded.vectors : null; // 未配置 → NULL embedding
-  const insert = db.prepare("INSERT INTO chunks (id, item_id, page, chunk_index, text, embedding) VALUES (?, ?, ?, ?, ?, ?)");
+  const insert = db.prepare("INSERT INTO chunks (id, item_id, page, chunk_index, text, embedding) VALUES (?, ?, ?, ?, ?, NULL)");
+  // better-sqlite3 事务同步执行：事务内复查 COUNT，杜绝并发首次 ask 双倍插入
   db.transaction(() => {
-    drafts.forEach((d, i) => {
-      insert.run(newKey(), item.id, d.page, d.chunkIndex, d.text, vectors ? vectorToBlob(vectors[i]) : null);
-    });
+    const again = db.prepare("SELECT COUNT(*) AS n FROM chunks WHERE item_id = ?").get(item.id) as { n: number };
+    if (again.n > 0) return;
+    drafts.forEach((d) => { insert.run(newKey(), item.id, d.page, d.chunkIndex, d.text); });
   })();
   return { ok: true };
 }
@@ -78,22 +77,20 @@ export function registerAskRoutes(app: FastifyInstance, db: Database.Database, d
       return;
     }
 
-    // chunks 已有但 embedding 为 NULL：若现已配置路由则回填
+    // chunks 已有但 embedding 为 NULL：尝试嵌入/回填；失败按原因发错误帧（保留 NULL 块以便重试）
     let rows = loadChunks(db, id);
     if (rows.some((r) => r.embedding === null)) {
       const embedded = await embedTexts(db, rows.map((r) => r.text), { fetchImpl: deps.fetchImpl });
-      if (embedded.ok) {
-        const update = db.prepare("UPDATE chunks SET embedding = ? WHERE id = ?");
-        db.transaction(() => {
-          rows.forEach((r, i) => { update.run(vectorToBlob(embedded.vectors[i]), r.id); });
-        })();
-        rows = loadChunks(db, id);
+      if (!embedded.ok) {
+        sse.send({ error: embedded.error });
+        sse.end();
+        return;
       }
-    }
-    if (rows.some((r) => r.embedding === null)) {
-      sse.send({ error: EMBEDDING_UNCONFIGURED });
-      sse.end();
-      return;
+      const update = db.prepare("UPDATE chunks SET embedding = ? WHERE id = ?");
+      db.transaction(() => {
+        rows.forEach((r, i) => { update.run(vectorToBlob(embedded.vectors[i]), r.id); });
+      })();
+      rows = loadChunks(db, id);
     }
 
     const qEmbed = await embedTexts(db, [question], { fetchImpl: deps.fetchImpl });

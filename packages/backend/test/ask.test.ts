@@ -221,6 +221,56 @@ describe("POST /api/items/:id/ask", () => {
     s.db.close();
   });
 
+  it("builds chunks only once when two first asks race", async () => {
+    process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
+    process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
+    const capture: Capture = { embedInputs: [], chatBodies: [] };
+    const s = await setup(fakeAskFetch(capture));
+    dir = s.dir;
+    const [r1, r2] = await Promise.all([
+      s.app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q1" } }),
+      s.app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q2" } }),
+    ]);
+    expect(parseSse(r1.body).at(-1)).toMatchObject({ done: true });
+    expect(parseSse(r2.body).at(-1)).toMatchObject({ done: true });
+    // 无双倍插入：每个 (page, chunk_index) 唯一
+    const total = (s.db.prepare("SELECT COUNT(*) AS n FROM chunks WHERE item_id = 'itm00001'").get() as { n: number }).n;
+    const distinct = (s.db.prepare("SELECT COUNT(DISTINCT page || '-' || chunk_index) AS n FROM chunks WHERE item_id = 'itm00001'").get() as { n: number }).n;
+    expect(total).toBeGreaterThan(0);
+    expect(total).toBe(distinct);
+    await s.app.close();
+    s.db.close();
+  });
+
+  it("surfaces the real upstream error when embedding fails transiently, keeping NULL chunks for retry", async () => {
+    process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
+    process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
+    const failing = (async (url: unknown) => {
+      if (String(url).endsWith("/embeddings")) return new Response("rate limited", { status: 429 });
+      throw new Error("chat should not be reached");
+    }) as unknown as typeof fetch;
+    const s = await setup(failing);
+    dir = s.dir;
+    const res = await s.app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q" } });
+    const frames = parseSse(res.body);
+    expect(frames).toHaveLength(1);
+    expect(String(frames[0].error)).toMatch(/429/);
+    expect(String(frames[0].error)).not.toContain("未配置");
+    // chunks 保留（embedding 为 NULL）以便重试
+    const chunks = s.db.prepare("SELECT embedding FROM chunks WHERE item_id = 'itm00001'").all() as { embedding: Buffer | null }[];
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.every((c) => c.embedding === null)).toBe(true);
+    // 上游恢复后重试成功并回填
+    const capture: Capture = { embedInputs: [], chatBodies: [] };
+    const app2 = buildServer(s.db, { dataDir: s.dir, fetchImpl: fakeAskFetch(capture) });
+    const res2 = await app2.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q" } });
+    expect(parseSse(res2.body).at(-1)).toMatchObject({ done: true });
+    expect((s.db.prepare("SELECT COUNT(*) AS n FROM chunks WHERE embedding IS NULL").get() as { n: number }).n).toBe(0);
+    await app2.close();
+    await s.app.close();
+    s.db.close();
+  });
+
   it("streams an error frame when the qa model is unconfigured but embeddings work", async () => {
     process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
     process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";

@@ -55,7 +55,7 @@ describe("embedTexts", () => {
     let called = false;
     const noFetch = (async () => { called = true; throw new Error("network"); }) as unknown as typeof fetch;
     const result = await embedTexts(db, ["x"], { fetchImpl: noFetch });
-    expect(result).toEqual({ ok: false, error: EMBEDDING_UNCONFIGURED });
+    expect(result).toEqual({ ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED });
     expect(called).toBe(false);
     expect(db.prepare("SELECT COUNT(*) AS n FROM usage_log").get()).toEqual({ n: 0 });
     db.close();
@@ -67,11 +67,11 @@ describe("embedTexts", () => {
     db.prepare("INSERT INTO providers (id, kind, label, api_key) VALUES ('p1', 'anthropic', 'Claude', 'sk')").run();
     db.prepare("INSERT INTO task_routes (task, provider_id) VALUES ('embedding', 'p1')").run();
     const result = await embedTexts(db, ["x"], { fetchImpl: (() => { throw new Error("network"); }) as unknown as typeof fetch });
-    expect(result).toEqual({ ok: false, error: EMBEDDING_UNCONFIGURED });
+    expect(result).toEqual({ ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED });
     db.close();
   });
 
-  it("propagates upstream http errors without writing usage_log", async () => {
+  it("propagates upstream http errors as reason=upstream without writing usage_log", async () => {
     process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
     process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
     dir = mkdtempSync(join(tmpdir(), "pw-test-"));
@@ -79,8 +79,24 @@ describe("embedTexts", () => {
     const failing = (async () => new Response("boom", { status: 429 })) as unknown as typeof fetch;
     const result = await embedTexts(db, ["x"], { fetchImpl: failing });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/429/);
+    if (!result.ok) {
+      expect(result.reason).toBe("upstream");
+      expect(result.error).toMatch(/429/);
+      expect(result.error).not.toBe(EMBEDDING_UNCONFIGURED);
+    }
     expect(db.prepare("SELECT COUNT(*) AS n FROM usage_log").get()).toEqual({ n: 0 });
+    db.close();
+  });
+
+  it("treats network throws as upstream errors", async () => {
+    process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
+    process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    const throwing = (async () => { throw new Error("socket hang up"); }) as unknown as typeof fetch;
+    const result = await embedTexts(db, ["x"], { fetchImpl: throwing });
+    expect(result).toMatchObject({ ok: false, reason: "upstream" });
+    if (!result.ok) expect(result.error).toContain("socket hang up");
     db.close();
   });
 

@@ -134,6 +134,25 @@ describe("llm router", () => {
     d.close();
   });
 
+  it("routes kind=builtin provider rows through the env-based builtin endpoint (consistent with /test)", () => {
+    process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
+    process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
+    const d = db();
+    d.prepare("INSERT INTO providers (id, kind, label) VALUES ('pb1', 'builtin', '内置额度')").run();
+    d.prepare("INSERT INTO task_routes (task, provider_id) VALUES ('qa', 'pb1')").run();
+    const res = resolveRoute(d, "qa");
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.llm).toMatchObject({
+        client: "openai",
+        baseUrl: "https://builtin.example/v1",
+        apiKey: "bk",
+        providerId: "pb1",
+      });
+    }
+    d.close();
+  });
+
   it("AI_TASKS covers the six contract tasks", () => {
     expect([...AI_TASKS].sort()).toEqual(["embedding", "explain", "qa", "summarize", "translate", "voice"]);
   });

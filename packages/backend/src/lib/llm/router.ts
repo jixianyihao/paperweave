@@ -47,8 +47,15 @@ function firstModel(modelsJson: string): string | null {
   return null;
 }
 
-function fromProvider(provider: ProviderRow, routeModel: string | null): ResolveResult {
+function fromProvider(provider: ProviderRow, routeModel: string | null, env: NodeJS.ProcessEnv = process.env): ResolveResult {
   if (!provider.enabled) return { ok: false, error: `provider "${provider.label}" is disabled` };
+  if (provider.kind === "builtin") {
+    // builtin 行的语义 = 环境变量内置端点，与 resolveProvider（/test 端点）保持一致；
+    // 保留行 id 以便 usage_log 归因到该 provider
+    const res = fromBuiltinEnv(env, routeModel);
+    if (res.ok) res.llm.providerId = provider.id;
+    return res;
+  }
   if (provider.kind === "anthropic") {
     if (!provider.api_key) return { ok: false, error: `provider "${provider.label}" 未配置 API key` };
     return {
@@ -62,7 +69,7 @@ function fromProvider(provider: ProviderRow, routeModel: string | null): Resolve
       },
     };
   }
-  // openai / custom / builtin 类型的 provider 行都按 OpenAI 兼容协议处理
+  // openai / custom 类型的 provider 行按 OpenAI 兼容协议处理
   const baseUrl = provider.base_url ?? (provider.kind === "openai" ? DEFAULT_BASE_URL.openai : null);
   if (!baseUrl) return { ok: false, error: `provider "${provider.label}" 缺少 base_url` };
   return {
@@ -101,7 +108,7 @@ export function resolveRoute(db: Database.Database, task: AiTask, env: NodeJS.Pr
   if (route?.provider_id) {
     const provider = db.prepare("SELECT * FROM providers WHERE id = ?").get(route.provider_id) as ProviderRow | undefined;
     if (!provider) return { ok: false, error: "task route references an unknown provider" };
-    return fromProvider(provider, route.model);
+    return fromProvider(provider, route.model, env);
   }
   return fromBuiltinEnv(env, route?.model ?? null);
 }
@@ -109,7 +116,7 @@ export function resolveRoute(db: Database.Database, task: AiTask, env: NodeJS.Pr
 // 供 providers 测试端点使用：直接按 provider 行解析（不看 task_routes）
 export function resolveProvider(provider: ProviderRow, env: NodeJS.ProcessEnv = process.env): ResolveResult {
   if (provider.kind === "builtin") return fromBuiltinEnv(env, null);
-  return fromProvider(provider, null);
+  return fromProvider(provider, null, env);
 }
 
 export type StreamTaskResult =

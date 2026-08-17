@@ -20,7 +20,7 @@ export function buildServer(db: Database.Database = openDb(), opts: ServerOption
   const app = Fastify({ logger: false });
   void app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } });
   app.get("/api/health", async () => ({ status: "ok", version: "0.1.0" }));
-  registerItemRoutes(app, db, { dataDir });
+  registerItemRoutes(app, db, { dataDir, fetchImpl });
   registerCollectionRoutes(app, db);
   registerTagRoutes(app, db);
   registerImportRoutes(app, db, { dataDir, fetchImpl });

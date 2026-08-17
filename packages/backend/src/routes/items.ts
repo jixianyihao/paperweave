@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
-import { unlinkSync, existsSync } from "node:fs";
+import { unlinkSync, existsSync, createReadStream, statSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { patchItemSchema } from "../lib/validate.js";
 import { toFtsQuery } from "../lib/fts.js";
+import { refetchMetadata } from "../lib/refetch.js";
+import type { FetchLike } from "../lib/metadata.js";
 
 export interface ItemRow {
   id: string;
@@ -26,6 +28,7 @@ export interface ItemRow {
 
 export interface RouteDeps {
   dataDir: string;
+  fetchImpl: FetchLike;
 }
 
 const UPDATABLE = ["title", "year", "venue", "abstract", "reading_status", "starred"] as const;
@@ -95,6 +98,28 @@ export function registerItemRoutes(app: FastifyInstance, db: Database.Database, 
     const values = UPDATABLE.filter((f) => f in parsed.data).map((f) => (parsed.data as Record<string, unknown>)[f]);
     db.prepare(`UPDATE items SET ${sets.join(", ")}, date_modified = datetime('now') WHERE id = ?`).run(...values, id);
     return db.prepare("SELECT * FROM items WHERE id = ?").get(id) as ItemRow;
+  });
+
+  app.get("/api/items/:id/pdf", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const row = db.prepare("SELECT file_path FROM items WHERE id = ?").get(id) as { file_path: string | null } | undefined;
+    if (!row || !row.file_path) return reply.code(404).send({ error: "pdf not found" });
+    // 防路径穿越：只信 files/<id>.pdf 形态，其余一律当作无文件
+    if (row.file_path !== `files/${id}.pdf`) return reply.code(404).send({ error: "pdf not found" });
+    const abs = join(deps.dataDir, row.file_path);
+    if (!existsSync(abs)) return reply.code(404).send({ error: "pdf not found" });
+    return reply
+      .header("content-type", "application/pdf")
+      .header("content-length", String(statSync(abs).size))
+      .send(createReadStream(abs));
+  });
+
+  app.post("/api/items/:id/refetch-metadata", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const result = await refetchMetadata(db, id, deps.fetchImpl);
+    if (result.kind === "not_found") return reply.code(404).send({ error: "item not found" });
+    if (result.kind === "no_identifier") return reply.code(400).send({ error: "item has no doi or arxiv_id" });
+    return { item: result.item, metadata_status: result.item.metadata_status };
   });
 
   app.delete("/api/items/:id", async (req, reply) => {

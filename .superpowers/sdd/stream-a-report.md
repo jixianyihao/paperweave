@@ -53,3 +53,7 @@
 - provider.api_key 明文存 SQLite（契约已注明，阶段 6 钥匙串加固）。
 - usage_log 只在流成功结束时写；上游中途失败不计量（无 token 数可记）。
 - `POST /api/annotations/:id/messages` 失败路径只发 error 帧，assistant message 不落库 —— conversation 里会留一条未回复的 user message，属预期行为。
+
+## 审查修复（2026-08-17，commit `025871a`）
+
+- **Important — builtin provider 路由不一致**：`resolveRoute()` → `fromProvider()` 把 kind=builtin 的 provider 行按 OpenAI 兼容处理、要求行上有 base_url 且不读 `PAPERWEAVE_BUILTIN_KEY/BASE`，而 `resolveProvider()`（`/providers/:id/test`）对同一行走 env 内置端点。用户把 builtin 服务商指给任务路由会报"缺少 base_url"，同行 /test 却成功。修复：`fromProvider` 遇到 `kind === "builtin"` 时委托 `fromBuiltinEnv()`，两条路径一致；解析结果保留行 id 以便 usage_log 归因。先写失败测试（builtin 行 + 任务路由 + env → resolveRoute 应成功）再修，全量 134 tests 绿、build 干净。

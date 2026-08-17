@@ -128,6 +128,21 @@ describe("GET /api/conversations/:id", () => {
     s.db.close();
   });
 
+  it("orders same-second messages by insertion order (rowid tiebreaker), not random id", async () => {
+    const s = await setup();
+    dir = s.dir;
+    s.db.prepare("INSERT INTO annotations (id, item_id, type, content) VALUES ('ann1', 'itm00001', 'highlight', 'hl')").run();
+    s.db.prepare("INSERT INTO conversations (id, annotation_id, item_id) VALUES ('conv1', 'ann1', 'itm00001')").run();
+    const ins = s.db.prepare("INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?, 'conv1', 'user', ?, '2026-01-01 00:00:00')");
+    ins.run("zzzzzzzz", "first inserted");
+    ins.run("aaaaaaaa", "second inserted");
+    const res = await s.app.inject({ method: "GET", url: "/api/conversations/conv1" });
+    const body = res.json() as { messages: { content: string }[] };
+    expect(body.messages.map((m) => m.content)).toEqual(["first inserted", "second inserted"]);
+    await s.app.close();
+    s.db.close();
+  });
+
   it("404s on missing conversation", async () => {
     const s = await setup();
     dir = s.dir;

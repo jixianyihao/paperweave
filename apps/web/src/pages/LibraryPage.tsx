@@ -7,10 +7,11 @@ import { useLibraryStore } from "../stores/libraryStore";
 import { useThemeStore } from "../stores/themeStore";
 import { useUiStore } from "../stores/uiStore";
 
-function isEditableTarget(target: EventTarget | null): boolean {
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  // 焦点在输入框、按钮、链接等可交互元素上时，Enter/方向键归该元素处理，不做列表导航
   return (
     target instanceof HTMLElement &&
-    (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+    target.closest('input, textarea, select, button, a, [role="button"], [contenteditable="true"]') !== null
   );
 }
 
@@ -32,7 +33,7 @@ export default function LibraryPage() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (useUiStore.getState().paletteOpen || useUiStore.getState().importOpen) return;
-      if (isEditableTarget(e.target)) return;
+      if (isInteractiveTarget(e.target)) return;
       const lib = useLibraryStore.getState();
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();

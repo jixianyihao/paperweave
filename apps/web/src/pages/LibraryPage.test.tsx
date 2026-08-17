@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { disableMockMode, enableMockMode } from "../api/client";
 import { resetMockData } from "../api/mock";
 import LibraryPage from "./LibraryPage";
@@ -12,6 +12,17 @@ function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/"]}>
       <LibraryPage />
+    </MemoryRouter>,
+  );
+}
+
+function renderWithRoutes() {
+  return render(
+    <MemoryRouter initialEntries={["/"]}>
+      <Routes>
+        <Route path="/" element={<LibraryPage />} />
+        <Route path="/read/:itemId" element={<div>READER_VIEW</div>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -77,5 +88,27 @@ describe("LibraryPage 条目选中 + 预览面板", () => {
     expect(useLibraryStore.getState().selectedId).not.toBe(firstId);
     const listbox = screen.getByRole("listbox", { name: "文献" });
     expect(listbox).toHaveAttribute("aria-activedescendant", useLibraryStore.getState().selectedId);
+  });
+
+  test("Enter 在 body 上打开选中条目", async () => {
+    renderWithRoutes();
+    await screen.findByText("Attention Is All You Need");
+    fireEvent.keyDown(document.body, { key: "ArrowDown" });
+    fireEvent.keyDown(document.body, { key: "Enter" });
+    await waitFor(() => expect(screen.getByText("READER_VIEW")).toBeInTheDocument());
+  });
+
+  test("Enter 焦点在按钮等可交互元素上时不触发阅读器跳转（防双触发）", async () => {
+    renderWithRoutes();
+    await screen.findByText("Attention Is All You Need");
+    fireEvent.keyDown(document.body, { key: "ArrowDown" });
+    const themeBtn = screen.getByRole("button", { name: "切换主题" });
+    themeBtn.focus();
+    fireEvent.keyDown(themeBtn, { key: "Enter" });
+    expect(screen.queryByText("READER_VIEW")).not.toBeInTheDocument();
+    const importBtn = screen.getByRole("button", { name: "导入" });
+    importBtn.focus();
+    fireEvent.keyDown(importBtn, { key: "Enter" });
+    expect(screen.queryByText("READER_VIEW")).not.toBeInTheDocument();
   });
 });

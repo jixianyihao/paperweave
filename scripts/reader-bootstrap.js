@@ -183,5 +183,17 @@ window.addEventListener('DOMContentLoaded', () => {
 
 	installSelectionHook(reader);
 	installHostCommandListener(reader);
-	reader.initializedPromise.then(() => postToHost({ type: 'ready' }));
+	// Reader#initializedPromise is never resolved upstream (this reader
+	// version defines it but never calls _resolveInitializedPromise); the
+	// per-view initializedPromise (pdf-view.js) is the real readiness signal.
+	// The primary view is created asynchronously, so poll for it.
+	(function waitForReady() {
+		const view = reader._primaryView;
+		if (view && view.initializedPromise) {
+			view.initializedPromise.then(() => postToHost({ type: 'ready' }));
+		}
+		else {
+			setTimeout(waitForReady, 100);
+		}
+	})();
 });

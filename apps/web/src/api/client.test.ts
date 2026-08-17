@@ -7,12 +7,14 @@ beforeEach(() => {
   resetMockData();
   disableMockMode();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   disableMockMode();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe("apiFetch 真实后端路径", () => {
@@ -37,7 +39,7 @@ describe("apiFetch 真实后端路径", () => {
     expect((err as ApiError).message).toBe("item not found");
   });
 
-  test("网络失败自动回退 mock 数据", async () => {
+  test("GET 网络失败（DEV 下）自动回退 mock 数据", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -48,26 +50,67 @@ describe("apiFetch 真实后端路径", () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items[0]).toHaveProperty("title");
   });
+
+  test("写操作（POST）网络失败必须抛错，绝不冒充后端", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }),
+    );
+    const err = await apiFetch("/api/providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "openai", label: "X" }),
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(0);
+    expect((err as ApiError).message).toContain("无法连接");
+    // mock 里也不应新增 provider（没有假成功）
+    enableMockMode();
+    expect((await apiFetch<unknown[]>("/api/providers")).length).toBe(2);
+  });
+
+  test("显式 mock 模式下写操作才允许走 mock", async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    enableMockMode();
+    const created = await apiFetch<{ id: string }>("/api/providers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "openai", label: "显式 mock" }),
+    });
+    expect(created.id).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("mock 模式开关", () => {
-  test("enableMockMode 后走 mock，并持久化 localStorage", async () => {
+  test("enableMockMode 后走 mock，并写入 sessionStorage（不粘滞到下次会话）", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     enableMockMode();
     expect(isMockMode()).toBe(true);
-    expect(localStorage.getItem("pw-mock")).toBe("1");
+    expect(sessionStorage.getItem("pw-mock")).toBe("1");
+    expect(localStorage.getItem("pw-mock")).toBeNull();
     const items = await apiFetch<Item[]>("/api/items");
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(items.length).toBeGreaterThan(0);
     disableMockMode();
     expect(isMockMode()).toBe(false);
-    expect(localStorage.getItem("pw-mock")).toBeNull();
+    expect(sessionStorage.getItem("pw-mock")).toBeNull();
   });
 
-  test("localStorage 置位时自动进入 mock 模式", () => {
-    localStorage.setItem("pw-mock", "1");
+  test("sessionStorage 置位时自动进入 mock 模式", () => {
+    sessionStorage.setItem("pw-mock", "1");
     expect(isMockMode()).toBe(true);
+  });
+
+  test("localStorage 里的旧 pw-mock 不再生效", () => {
+    localStorage.setItem("pw-mock", "1");
+    expect(isMockMode()).toBe(false);
   });
 
   test("URL ?mock=1 进入 mock 模式", () => {

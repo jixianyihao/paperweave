@@ -1,26 +1,28 @@
 // 唯一允许的 API 出入口：组件一律通过 apiFetch（或 endpoints.ts 的封装）访问后端。
-// mock 模式：URL 带 ?mock=1、localStorage "pw-mock"="1"、或真实请求网络失败时自动回退到 mock。
+// mock 模式：`?mock=1` 显式开启（记 sessionStorage，当次会话有效，可用顶栏标识退出）。
+// 额外安全网：仅 DEV 下的 GET 请求在网络失败时回退 mock；写操作网络失败一律抛错，绝不冒充后端。
 import { MockApiError, mockApiFetch } from "./mock";
 
 const MOCK_STORAGE_KEY = "pw-mock";
 
 let mockOverride: boolean | null = null;
 
-/** 显式开启 mock 模式（写入 localStorage，供 ?mock=1 进入后保持） */
+/** 显式开启 mock 模式（写入 sessionStorage，仅当次会话） */
 export function enableMockMode(): void {
   mockOverride = true;
   try {
-    localStorage.setItem(MOCK_STORAGE_KEY, "1");
+    sessionStorage.setItem(MOCK_STORAGE_KEY, "1");
   } catch {
     /* jsdom / 隐私模式下忽略 */
   }
 }
 
-/** 关闭 mock 模式 */
+/** 退出 mock 模式（顶栏 mock 标识点击时调用） */
 export function disableMockMode(): void {
   mockOverride = false;
   try {
-    localStorage.removeItem(MOCK_STORAGE_KEY);
+    sessionStorage.removeItem(MOCK_STORAGE_KEY);
+    localStorage.removeItem(MOCK_STORAGE_KEY); // 清理旧版本遗留的粘滞标记
   } catch {
     /* ignore */
   }
@@ -33,7 +35,7 @@ export function isMockMode(): boolean {
       return true;
     }
     try {
-      if (localStorage.getItem(MOCK_STORAGE_KEY) === "1") return true;
+      if (sessionStorage.getItem(MOCK_STORAGE_KEY) === "1") return true;
     } catch {
       /* ignore */
     }
@@ -66,30 +68,35 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, message, body);
 }
 
+async function fromMock<T>(path: string, init?: RequestInit): Promise<T> {
+  try {
+    return await mockApiFetch<T>(path, init);
+  } catch (e) {
+    if (e instanceof MockApiError) throw new ApiError(e.status, e.message);
+    throw e;
+  }
+}
+
+function isReadOnly(init?: RequestInit): boolean {
+  return (init?.method ?? "GET").toUpperCase() === "GET";
+}
+
 /**
  * 所有 API 调用的统一入口。path 以 "/api/..." 开头。
- * 网络层失败（后端未启动等）自动回退 mock；HTTP 错误（4xx/5xx）抛 ApiError，不回退。
+ * - 显式 mock 模式：全部请求走 mock。
+ * - 非 mock 模式：GET 在 DEV 下网络失败回退 mock（便于无后端浏览）；写操作网络失败抛 ApiError(0)。
+ * - HTTP 4xx/5xx 一律抛 ApiError，不回退。
  */
 export async function apiFetch<T = unknown>(path: string, init?: RequestInit): Promise<T> {
-  if (isMockMode()) {
-    try {
-      return await mockApiFetch<T>(path, init);
-    } catch (e) {
-      if (e instanceof MockApiError) throw new ApiError(e.status, e.message);
-      throw e;
-    }
-  }
+  if (isMockMode()) return fromMock<T>(path, init);
   let res: Response;
   try {
     res = await fetch(path, init);
-  } catch {
-    // 网络失败（后端未启动等）→ 回退 mock，保证演示流程可用
-    try {
-      return await mockApiFetch<T>(path, init);
-    } catch (e) {
-      if (e instanceof MockApiError) throw new ApiError(e.status, e.message);
-      throw e;
+  } catch (e) {
+    if (isReadOnly(init) && import.meta.env.DEV) {
+      return fromMock<T>(path, init);
     }
+    throw new ApiError(0, "无法连接后端服务，请确认后端已启动", e);
   }
   if (res.status === 204) return undefined as T;
   if (!res.ok) throw await parseError(res);

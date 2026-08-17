@@ -6,6 +6,7 @@ import { registerItemRoutes } from "./routes/items.js";
 import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTagRoutes } from "./routes/tags.js";
 import { registerImportRoutes } from "./routes/import.js";
+import { registerSearchRoutes } from "./routes/search.js";
 import type { FetchLike } from "./lib/metadata.js";
 
 export interface ServerOptions {
@@ -23,5 +24,6 @@ export function buildServer(db: Database.Database = openDb(), opts: ServerOption
   registerCollectionRoutes(app, db);
   registerTagRoutes(app, db);
   registerImportRoutes(app, db, { dataDir, fetchImpl });
+  registerSearchRoutes(app, db);
   return app;
 }

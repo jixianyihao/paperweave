@@ -44,6 +44,18 @@ export function registerCollectionRoutes(app: FastifyInstance, db: Database.Data
     return reply.code(204).send();
   });
 
+  app.get("/api/collections/:id/items", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const col = db.prepare("SELECT id FROM collections WHERE id = ?").get(id);
+    if (!col) return reply.code(404).send({ error: "collection not found" });
+    return db.prepare(`
+      SELECT i.* FROM items i
+      JOIN collection_items ci ON ci.item_id = i.id
+      WHERE ci.collection_id = ?
+      ORDER BY i.date_added DESC, i.id DESC
+    `).all(id);
+  });
+
   app.put("/api/collections/:id/items/:itemId", async (req, reply) => {
     const { id, itemId } = req.params as { id: string; itemId: string };
     const col = db.prepare("SELECT id FROM collections WHERE id = ?").get(id);

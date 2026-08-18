@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { dataDir } from "../db.js";
 
 // 多语言小模型（~120MB），首次使用从 huggingface.co 下载，之后完全离线
@@ -21,7 +22,15 @@ export type PipelineFactory = (task: "feature-extraction", model: string) => Pro
 async function defaultFactory(task: "feature-extraction", model: string): Promise<LocalPipeline> {
   const mod = await import("@xenova/transformers");
   // 必须在首次 pipeline 调用前设置缓存目录：模型落在 <dataDir>/models/
-  mod.env.cacheDir = join(dataDir(), "models");
+  const cacheDir = join(dataDir(), "models");
+  mod.env.cacheDir = cacheDir;
+  // HF_ENDPOINT 可覆盖下载源（如国内用 https://hf-mirror.com）
+  if (process.env.HF_ENDPOINT) mod.env.remoteHost = process.env.HF_ENDPOINT;
+  // 缓存里已有模型时强制纯本地加载，避免 transformers.js 联网校验在受限网络下失败
+  if (existsSync(join(cacheDir, model, "config.json"))) {
+    mod.env.localModelPath = cacheDir;
+    mod.env.allowRemoteModels = false;
+  }
   const pipe = await mod.pipeline(task, model);
   return pipe as unknown as LocalPipeline;
 }

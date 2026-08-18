@@ -107,6 +107,15 @@ function withBase(path: string): string {
 }
 
 /**
+ * 把 "/api/..." 解析成完整 URL（Tauri 下指向 sidecar）。
+ * 用于绕过 apiFetch 的场景：iframe 的 file 参数、pdf.js worker 内请求——
+ * worker 不会执行 Tauri 注入的 fetch 重写，必须给绝对 URL。
+ */
+export function apiUrl(path: string): string {
+  return withBase(path);
+}
+
+/**
  * 所有 API 调用的统一入口。path 以 "/api/..." 开头。
  * - 显式 mock 模式：全部请求走 mock。
  * - 非 mock 模式：GET 在 DEV 下网络失败回退 mock（便于无后端浏览）；写操作网络失败抛 ApiError(0)。

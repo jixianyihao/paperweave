@@ -2,7 +2,7 @@
 // 桥接经 attachReaderBridge（流 A 提供；测试用 __mocks__ 替身）：选区 → 浮动菜单 → AI SSE → 时间流新条目。
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { isMockMode } from "./api/client";
+import { isMockMode, apiUrl } from "./api/client";
 import { isAbortError, type SseFrame, type SseOptions } from "./api/client";
 import {
   aiExplain,
@@ -406,10 +406,12 @@ export default function ReaderPage() {
     );
   }
 
-  // mock 模式下后端并不会真的流式返回 PDF，用内置样例代替以便演示
+  // mock 模式下后端并不会真的流式返回 PDF，用内置样例代替以便演示。
+  // 注意必须用 apiUrl 解析成绝对 URL：pdf.js 的 Web Worker 不执行
+  // Tauri 注入的 fetch 重写，相对路径会解析到 tauri://localhost 而 404。
   const file = isMockMode()
     ? "/samples/sample.pdf"
-    : `/api/items/${encodeURIComponent(item.id)}/pdf`;
+    : apiUrl(`/api/items/${encodeURIComponent(item.id)}/pdf`);
 
   return (
     <ReaderBridgeContext.Provider value={bridgeApi}>

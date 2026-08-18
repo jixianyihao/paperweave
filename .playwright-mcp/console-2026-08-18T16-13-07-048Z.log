@@ -1,0 +1,110 @@
+[    6597ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googleadservices.com/pagead/conversion/16521530460/?gad_source=1&adview_type=1&adview_query_id=CL7rqIHJqpYDFccjRAgd2fYmOQ:0
+[   10254ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googleadservices.com/pagead/conversion/16521530460/?gad_source=1&adview_type=1&adview_query_id=CJqpn4PJqpYDFTAfRAgdwII70A:0
+[   16763ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[   17234ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[   17925ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[   36641ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://creative.myavlive.com/widgets/Spot/lib.js:0
+[   37081ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[   38346ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[   44681ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[   63014ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[   63106ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[   88860ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[   90248ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[   93500ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[   93577ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[   93919ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  120122ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  125655ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://missav.ws/api/items/scd5xdqc/view:0
+[  125656ms] Error: Request failed with status code 403
+    at Ct (https://missav.ws/build/assets/app.1aad5686.js:3:6561)
+    at Rt (https://missav.ws/build/assets/app.1aad5686.js:3:6744)
+    at XMLHttpRequest.G (https://missav.ws/build/assets/app.1aad5686.js:4:1664)
+[  126596ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/8d7600ff-a847-4467-9d3e-1d81d65a409d:0
+[  127471ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  127943ms] sc: Client did not get response within 3000 ms
+    at a.ontimeout (https://missav.ws/build/assets/app.1aad5686.js:8:55228)
+[  127994ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  128154ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://creative.myavlive.com/widgets/Spot/lib.js:0
+[  143610ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/0ed3d82d-2b60-48de-b044-f73474c38109:0
+[  143933ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  144251ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  145339ms] sc: Client did not get response within 3000 ms
+    at a.ontimeout (https://missav.ws/build/assets/app.1aad5686.js:8:55228)
+[  153246ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://missav.ws/api/items/scd5xdqc/view:0
+[  153294ms] Error: Request failed with status code 403
+    at Ct (https://missav.ws/build/assets/app.1aad5686.js:3:6561)
+    at Rt (https://missav.ws/build/assets/app.1aad5686.js:3:6744)
+    at XMLHttpRequest.G (https://missav.ws/build/assets/app.1aad5686.js:4:1664)
+[  153296ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/ab920f71-3004-46f7-8fac-2bfa83b63fc3:0
+[  155356ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  155390ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  155418ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  159743ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  160771ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  161029ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  163809ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  164317ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  214123ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/fd1874f2-7431-4fc2-8b9e-0fab9bbecf29:0
+[  216075ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  216361ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  216792ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  221009ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  259686ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  259746ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  261229ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://creative.myavlive.com/widgets/Spot/lib.js:0
+[  264650ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  264826ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  265243ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  265329ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  265799ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  265800ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  266759ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  267268ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  267292ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  267802ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  267802ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  270971ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  280592ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/17016464-80b6-4717-9307-9f5d469977bd:0
+[  282201ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  282810ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  283185ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  283208ms] sc: Client did not get response within 3000 ms
+    at a.ontimeout (https://missav.ws/build/assets/app.1aad5686.js:8:55228)
+[  291444ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  294558ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/f41a80af-3461-4185-87f0-75a502312694:0
+[  296867ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://go.mayzaent.com/smartpop/2bac4caf7df5261aa002fcaa29600a13046b79b265b2f78d91f7b76ba62b9686?userId=0c96df4abeb0e8f90e4c799ab382981f84b483088706eee78a0b2896dd798907&width=298px&height=98px:0
+[  296876ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  297949ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  299855ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[  397721ms] sc: Client did not get response within 3000 ms
+    at a.ontimeout (https://missav.ws/build/assets/app.1aad5686.js:8:55228)
+[  700586ms] [ERROR] Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED @ https://cdn.tsyndicate.com/sdk/v1/ms.js:0
+[  700586ms] [ERROR] Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED @ https://www.googletagmanager.com/gtm.js?id=GTM-WWTJ443V:0
+[  728003ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/c161b737-19cc-4a42-b928-a5bfc1ce6359:0
+[  729044ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  780441ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  784796ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  791757ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  797099ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/45ba53ed-17b2-4bce-917a-fef0c0eec064:0
+[  797718ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  845115ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/21302a58-a938-4ccd-9811-feaa61f8fa26:0
+[  848203ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  873629ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  876047ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  890109ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/227863d2-90e9-47a2-9b54-f2ac42aa6469:0
+[  891123ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  946445ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  950543ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ https://creative.myavlive.com/widgets/Spot/lib.js:0
+[  961951ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  965262ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ https://creative.myavlive.com/widgets/Spot/lib.js:0
+[  965638ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  975812ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[  982202ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[ 1010712ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[ 1016580ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[ 1022495ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[ 1029667ms] The play() request was interrupted by a call to pause(). https://goo.gl/LdLk22
+[ 1030097ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1
+[ 1037793ms] [ERROR] Failed to load resource: net::ERR_FILE_NOT_FOUND @ blob:https://missav.ws/31343975-2d0d-4e9a-a4f4-ae10d0ce1957:0
+[ 1038668ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ https://cdn.tsyndicate.com/sdk/v1/ms.js:1

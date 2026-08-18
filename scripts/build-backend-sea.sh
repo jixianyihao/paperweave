@@ -41,6 +41,7 @@ mkdir -p "$WORK"
   --alias:onnxruntime-node=./scripts/sea/onnxruntime-node-shim.cjs \
   --alias:onnxruntime-web=./scripts/sea/onnxruntime-web-stub.cjs \
   --alias:sharp=./scripts/sea/sharp-shim.cjs \
+  --alias:@napi-rs/canvas=./scripts/sea/napi-canvas-shim.cjs \
   "--define:import.meta.dirname=globalThis.__PW_DIRNAME__" \
   "--define:import.meta.url=globalThis.__PW_IMPORT_META_URL__" \
   "--banner:js=globalThis.__PW_DIRNAME__ = process.env.PAPERWEAVE_BACKEND_HOME || __dirname; globalThis.__PW_IMPORT_META_URL__ = require(\"node:url\").pathToFileURL(require(\"node:path\").resolve(globalThis.__PW_DIRNAME__, \"paperweave-backend.cjs\")).href;" \
@@ -95,9 +96,8 @@ for pkg in better-sqlite3 bindings file-uri-to-path; do
   src="$(node scripts/sea/resolve-pkg.cjs "$pkg")" || exit 1
   cp -RL "$src" "$RES_DIR/backend/node_modules/${pkg}"
 done
-# stage onnxruntime-node + sharp (and their runtime dep closures, e.g.
-# onnxruntime-common, color, detect-libc, semver) including native binaries
-node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp
+# stage onnxruntime-node + sharp + @napi-rs/canvas（pdfjs Node polyfill）
+node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp @napi-rs/canvas
 # bindings only needs its entry; drop prebuild noise
 rm -rf "$RES_DIR/backend/node_modules/better-sqlite3/obj" \
        "$RES_DIR/backend/node_modules/better-sqlite3/obj.target" \

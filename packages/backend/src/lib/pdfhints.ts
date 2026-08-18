@@ -1,4 +1,4 @@
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument } from "./pdfjs.js";
 
 const DOI_RE = /\b(10\.\d{4,9}\/[-._;()/:A-Z0-9]+)/i;
 const ARXIV_RE = /(?:arXiv:\s*)?(\d{4}\.\d{4,5})(?:v\d+)?/;

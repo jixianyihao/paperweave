@@ -1,4 +1,4 @@
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { getDocument } from "./pdfjs.js";
 
 export const DEFAULT_MAX_CHARS = 1500;
 

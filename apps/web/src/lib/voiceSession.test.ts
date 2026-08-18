@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   VoiceSession,
   type MediaStreamLike,
@@ -24,6 +24,7 @@ class FakePeerConnection implements RtcPeerConnectionLike {
   closed = false;
   local: unknown = null;
   remote: unknown = null;
+  ontrack: ((ev: { streams: unknown[] }) => void) | null = null;
   createDataChannel(): RtcDataChannelLike { return this.dc; }
   addTrack(track: unknown): void { this.tracks.push(track); }
   async createOffer(): Promise<{ sdp?: string }> { return { sdp: "fake-offer-sdp" }; }
@@ -199,5 +200,66 @@ describe("VoiceSession 状态机", () => {
     await s.stop();
     w.advance(10_000);
     expect(s.elapsedSeconds()).toBe(0);
+  });
+
+  test("ontrack：远端音频流交给 playRemoteStream 播放，stop/error 清理时停掉", async () => {
+    const played: unknown[] = [];
+    let stopped = 0;
+    const remoteStream = { kind: "remote-audio" };
+    const w = makeWorld({
+      playRemoteStream: (stream) => {
+        played.push(stream);
+        return { stop: () => { stopped += 1; } };
+      },
+    });
+    const s = new VoiceSession(w.deps);
+    await s.start({});
+    // start 挂好了 track 监听面
+    expect(typeof w.pc.ontrack).toBe("function");
+    w.pc.ontrack?.({ streams: [remoteStream] });
+    expect(played).toEqual([remoteStream]);
+    await s.stop();
+    expect(stopped).toBe(1);
+  });
+
+  test("connecting 中 stop（SDP 协商挂起）：挂起的 start 中止，pc/track 被清理，最终保持 idle", async () => {
+    let resolveSdp: ((v: string) => void) | null = null;
+    const sdpCalls: string[] = [];
+    const w = makeWorld({
+      postSdp: (url) => {
+        sdpCalls.push(url);
+        return new Promise<string>((res) => { resolveSdp = res; });
+      },
+    });
+    const s = new VoiceSession(w.deps);
+    const starting = s.start({});
+    // 等协商进行到 SDP POST（mic 已开、pc 已建）
+    await vi.waitFor(() => expect(sdpCalls).toHaveLength(1));
+    expect(s.state).toBe("connecting");
+    await s.stop();
+    expect(s.state).toBe("idle");
+    // SDP 稍后返回：start 不得把状态推进到 listening
+    resolveSdp!("late-answer");
+    await starting;
+    expect(s.state).toBe("idle");
+    expect(w.pc.closed).toBe(true);
+    expect(w.stream.tracks.every((t) => t.stopped)).toBe(true);
+  });
+
+  test("connecting 中 stop（getUserMedia 挂起）：权限稍后授予也不会上线", async () => {
+    let resolveMedia: ((s: MediaStreamLike) => void) | null = null;
+    const w = makeWorld({ getUserMedia: () => new Promise<MediaStreamLike>((res) => { resolveMedia = res; }) });
+    const s = new VoiceSession(w.deps);
+    const starting = s.start({});
+    await vi.waitFor(() => expect(w.sessionCalls).toHaveLength(1));
+    await s.stop();
+    expect(s.state).toBe("idle");
+    resolveMedia!(w.stream);
+    await starting;
+    expect(s.state).toBe("idle");
+    // 迟到的麦克风流被立即停掉，且从未创建 peer connection
+    expect(w.stream.tracks.every((t) => t.stopped)).toBe(true);
+    expect(w.pc.closed).toBe(false);
+    expect(w.sdpCalls).toHaveLength(0);
   });
 });

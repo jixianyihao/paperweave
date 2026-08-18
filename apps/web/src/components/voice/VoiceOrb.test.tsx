@@ -28,6 +28,7 @@ class FakeDataChannel implements RtcDataChannelLike {
 class FakePeerConnection implements RtcPeerConnectionLike {
   dc = new FakeDataChannel();
   closed = false;
+  ontrack: ((ev: { streams: unknown[] }) => void) | null = null;
   createDataChannel(): RtcDataChannelLike { return this.dc; }
   addTrack(): void { /* noop */ }
   async createOffer(): Promise<{ sdp?: string }> { return { sdp: "offer" }; }

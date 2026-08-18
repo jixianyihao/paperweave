@@ -3,6 +3,7 @@ import type Database from "better-sqlite3";
 import { z } from "zod";
 import { importPdf } from "../lib/importfile.js";
 import { importIdentifier } from "../lib/importidentifier.js";
+import { importRisBib, detectFormat } from "../lib/risbib.js";
 import type { FetchLike } from "../lib/metadata.js";
 
 export interface ImportDeps {
@@ -31,5 +32,15 @@ export function registerImportRoutes(app: FastifyInstance, db: Database.Database
     const result = await importIdentifier(db, deps.dataDir, parsed.data.input, deps.fetchImpl);
     if (!result) return reply.code(400).send({ error: "unrecognized identifier or metadata lookup failed" });
     return result;
+  });
+
+  // RIS / BibTeX 迁移导入（spec §3.2）：JSON body 携带纯文本内容，批量建条目
+  const risSchema = z.object({ content: z.string().min(1).max(10 * 1024 * 1024) }).strict();
+
+  app.post("/api/import/ris", async (req, reply) => {
+    const parsed = risSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "content required", details: parsed.error.issues });
+    if (!detectFormat(parsed.data.content)) return reply.code(400).send({ error: "unrecognized RIS/BibTeX content" });
+    return importRisBib(db, parsed.data.content);
   });
 }

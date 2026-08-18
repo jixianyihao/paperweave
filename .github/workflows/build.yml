@@ -66,7 +66,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
-      - name: Windows: npm/pnpm 脚本走 bash（reader 构建含 POSIX env 语法，cmd 会报 PDFJS_CONFIG 不识别）
+      - name: "Windows: npm/pnpm 脚本走 bash（reader 构建含 POSIX env 语法，cmd 会报 PDFJS_CONFIG 不识别）"
         if: runner.os == 'Windows'
         run: |
           npm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"

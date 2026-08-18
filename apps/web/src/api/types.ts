@@ -118,6 +118,12 @@ export interface IdentifierImportResult {
   duplicate: boolean;
 }
 
+// RIS / BibTeX 批量导入结果（POST /api/import/ris，与后端 BibImportResult 一致）
+export interface RisImportResult {
+  imported: number;
+  failed: number;
+}
+
 export function parseCreators(item: Item): string[] {
   try {
     const parsed: unknown = JSON.parse(item.creators);

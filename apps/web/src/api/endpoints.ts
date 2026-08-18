@@ -12,6 +12,7 @@ import type {
   Message,
   Provider,
   ProviderKind,
+  RisImportResult,
   Tag,
   TaskRoute,
   UsageSummary,
@@ -64,6 +65,11 @@ export function importFile(file: File): Promise<FileImportResult> {
 
 export function importIdentifier(input: string): Promise<IdentifierImportResult> {
   return apiFetch<IdentifierImportResult>("/api/import/identifier", jsonInit("POST", { input }));
+}
+
+/** RIS / BibTeX 迁移导入：后端契约要求 JSON body { content }（非 multipart） */
+export function importRis(content: string): Promise<RisImportResult> {
+  return apiFetch<RisImportResult>("/api/import/ris", jsonInit("POST", { content }));
 }
 
 // ---- A6 LLM 网关 ----

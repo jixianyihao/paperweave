@@ -81,6 +81,31 @@ function isReadOnly(init?: RequestInit): boolean {
   return (init?.method ?? "GET").toUpperCase() === "GET";
 }
 
+// ---- 桌面端运行时 baseURL 覆盖（流 P 追加）----
+// Tauri sidecar 可能因 8471 被占用而改用其他端口；Rust 侧通过 initialization_script
+// 注入 window.__PAPERWEAVE_API_BASE__，此处自动接管。Web 开发/生产环境该全局不存在，
+// apiBase 保持空串，行为与之前完全一致（相对路径）。
+let apiBase = "";
+
+/** 运行时覆盖 API base（desktop sidecar 用）；传空串恢复相对路径 */
+export function setApiBase(base: string): void {
+  apiBase = base.replace(/\/+$/, "");
+}
+
+declare global {
+  interface Window {
+    __PAPERWEAVE_API_BASE__?: string;
+  }
+}
+
+if (typeof window !== "undefined" && typeof window.__PAPERWEAVE_API_BASE__ === "string") {
+  setApiBase(window.__PAPERWEAVE_API_BASE__);
+}
+
+function withBase(path: string): string {
+  return apiBase ? apiBase + path : path;
+}
+
 /**
  * 所有 API 调用的统一入口。path 以 "/api/..." 开头。
  * - 显式 mock 模式：全部请求走 mock。
@@ -91,7 +116,7 @@ export async function apiFetch<T = unknown>(path: string, init?: RequestInit): P
   if (isMockMode()) return fromMock<T>(path, init);
   let res: Response;
   try {
-    res = await fetch(path, init);
+    res = await fetch(withBase(path), init);
   } catch (e) {
     if (isReadOnly(init) && import.meta.env.DEV) {
       return fromMock<T>(path, init);
@@ -146,7 +171,7 @@ export async function apiSse(
   if (isMockMode()) return mockApiSse(path, body, onFrame, options);
   let res: Response;
   try {
-    res = await fetch(path, { ...jsonInit("POST", body), signal });
+    res = await fetch(withBase(path), { ...jsonInit("POST", body), signal });
   } catch (e) {
     if (isAbortError(e)) throw e;
     throw new ApiError(0, "无法连接后端服务，请确认后端已启动", e);

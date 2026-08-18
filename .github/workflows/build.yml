@@ -22,7 +22,7 @@ jobs:
           version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install
       - run: pnpm build:reader
@@ -60,12 +60,17 @@ jobs:
           version: 9
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+      - name: Windows: npm/pnpm 脚本走 bash（reader 构建含 POSIX env 语法，cmd 会报 PDFJS_CONFIG 不识别）
+        if: runner.os == 'Windows'
+        run: |
+          npm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"
+          pnpm config set script-shell "C:\\Program Files\\Git\\bin\\bash.exe"
       - name: Linux bundling deps (AppImage/deb)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf

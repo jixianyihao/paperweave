@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../src/db.js";
 import { buildServer } from "../src/server.js";
-import { EMBEDDING_UNCONFIGURED } from "../src/lib/embedding.js";
+import { setLocalPipelineFactory, LOCAL_EMBEDDING_MODEL, type LocalPipeline } from "../src/lib/embedding-local.js";
 
 const savedEnv = { ...process.env };
 const samplePdf = join(import.meta.dirname, "../../../apps/web/public/samples/sample.pdf");
@@ -13,7 +13,18 @@ beforeEach(() => {
   delete process.env.PAPERWEAVE_BUILTIN_KEY;
   delete process.env.PAPERWEAVE_BUILTIN_BASE;
 });
-afterEach(() => { process.env = { ...savedEnv }; });
+afterEach(() => {
+  process.env = { ...savedEnv };
+  setLocalPipelineFactory(null);
+});
+
+// 本地 embedding 的假 pipeline：记录收到的（已加 e5 前缀的）文本，按元音计数出向量
+function fakeLocalPipeline(capture: string[][]): void {
+  setLocalPipelineFactory(async () => (async (texts: string[]) => {
+    capture.push(texts);
+    return { tolist: () => vowelEmbed(texts) };
+  }) as LocalPipeline);
+}
 
 function sseBody(deltas: string[], usage?: { in: number; out: number }): string {
   const frames = deltas.map((d) => `data: {"choices":[{"delta":{"content":${JSON.stringify(d)}}}]}`).join("\n\n");
@@ -146,12 +157,13 @@ describe("POST /api/items/:id/ask", () => {
   it("backfills embeddings when chunks exist without them but a route is now configured", async () => {
     const s = await setup();
     dir = s.dir;
-    // 先未配置：chunks 建成 NULL embedding，ask 报错
+    // 先让本地模型"下载失败"：chunks 建成 NULL embedding，ask 报错
+    setLocalPipelineFactory(async () => { throw new Error("ENETUNREACH"); });
     const res1 = await s.app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q" } });
-    expect(parseSse(res1.body)).toEqual([{ error: EMBEDDING_UNCONFIGURED }]);
+    expect(parseSse(res1.body)).toEqual([{ error: "本地 embedding 模型下载失败: ENETUNREACH" }]);
     const nullBefore = s.db.prepare("SELECT COUNT(*) AS n FROM chunks WHERE embedding IS NULL").get() as { n: number };
     expect(nullBefore.n).toBeGreaterThan(0);
-    // 配置后：ask 回填 embedding 并正常作答
+    // 配置远程 embedding 路由后：ask 回填 embedding 并正常作答
     process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
     process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
     const capture: Capture = { embedInputs: [], chatBodies: [] };
@@ -164,17 +176,40 @@ describe("POST /api/items/:id/ask", () => {
     s.db.close();
   });
 
-  it("sends an error frame when embedding is unconfigured and stores NULL embeddings", async () => {
+  it("works end-to-end without any embedding provider: chunks embedded locally with e5 prefixes", async () => {
+    // 只配置 qa 路由（本地 embedding 不需要任何 provider/key）
     const s = await setup();
     dir = s.dir;
-    const res = await s.app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "q" } });
-    expect(res.statusCode).toBe(200);
-    expect(parseSse(res.body)).toEqual([{ error: EMBEDDING_UNCONFIGURED }]);
-    const chunks = s.db.prepare("SELECT embedding FROM chunks WHERE item_id = 'itm00001'").all() as { embedding: Buffer | null }[];
-    expect(chunks.length).toBeGreaterThan(0);
-    expect(chunks.every((c) => c.embedding === null)).toBe(true);
-    expect((s.db.prepare("SELECT COUNT(*) AS n FROM conversations").get() as { n: number }).n).toBe(0);
-    expect((s.db.prepare("SELECT COUNT(*) AS n FROM usage_log").get() as { n: number }).n).toBe(0);
+    s.db.prepare("INSERT INTO providers (id, kind, label, base_url, api_key) VALUES ('p1', 'openai', 'QA', 'https://qa.example/v1', 'sk')").run();
+    s.db.prepare("INSERT INTO task_routes (task, provider_id) VALUES ('qa', 'p1')").run();
+    const pipelineInputs: string[][] = [];
+    fakeLocalPipeline(pipelineInputs);
+    const chatCapture: Capture = { embedInputs: [], chatBodies: [] };
+    const app = buildServer(s.db, { dataDir: s.dir, fetchImpl: fakeAskFetch(chatCapture) });
+
+    const res = await app.inject({ method: "POST", url: "/api/items/itm00001/ask", payload: { question: "什么是注意力机制？" } });
+    const frames = parseSse(res.body);
+    const done = frames.at(-1)!;
+    expect(done.done).toBe(true);
+    const citations = done.citations as { page: number; quote: string }[];
+    expect(citations.length).toBeGreaterThan(0);
+
+    // 本地 pipeline 收到 passage 前缀的 chunks 与 query 前缀的问题；fetch 从未触碰 /embeddings
+    expect(pipelineInputs).toHaveLength(2);
+    expect(pipelineInputs[0].length).toBeGreaterThan(0);
+    expect(pipelineInputs[0].every((t) => t.startsWith("passage: "))).toBe(true);
+    expect(pipelineInputs[1]).toEqual(["query: 什么是注意力机制？"]);
+    expect(chatCapture.embedInputs).toHaveLength(0);
+    expect(chatCapture.chatBodies).toHaveLength(1);
+
+    // chunks 已回填 embedding；usage_log 记录本地模型
+    expect((s.db.prepare("SELECT COUNT(*) AS n FROM chunks WHERE embedding IS NULL").get() as { n: number }).n).toBe(0);
+    const embLog = s.db.prepare("SELECT provider_id, model FROM usage_log WHERE task = 'embedding'").all() as { provider_id: string | null; model: string }[];
+    expect(embLog).toEqual([
+      { provider_id: null, model: LOCAL_EMBEDDING_MODEL },
+      { provider_id: null, model: LOCAL_EMBEDDING_MODEL },
+    ]);
+    await app.close();
     await s.app.close();
     s.db.close();
   });

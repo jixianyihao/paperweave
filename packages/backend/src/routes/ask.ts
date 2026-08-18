@@ -93,7 +93,7 @@ export function registerAskRoutes(app: FastifyInstance, db: Database.Database, d
       rows = loadChunks(db, id);
     }
 
-    const qEmbed = await embedTexts(db, [question], { fetchImpl: deps.fetchImpl });
+    const qEmbed = await embedTexts(db, [question], { fetchImpl: deps.fetchImpl, role: "query" });
     if (!qEmbed.ok) {
       sse.send({ error: qEmbed.error });
       sse.end();

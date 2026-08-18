@@ -1,13 +1,12 @@
 import type Database from "better-sqlite3";
 import { resolveRoute } from "./llm/router.js";
 import { httpError, type FetchLike } from "./llm/common.js";
-
-export const EMBEDDING_UNCONFIGURED = "未配置 embedding 模型，全文问答不可用";
+import { embedLocal, E5_PREFIX, LOCAL_EMBEDDING_MODEL, type EmbedRole } from "./embedding-local.js";
 
 export type EmbedResult =
   | { ok: true; vectors: Float32Array[] }
-  // reason 区分"未配置路由"与"上游瞬时失败"，调用方据此决定错误帧文案与是否可重试
-  | { ok: false; reason: "unconfigured" | "upstream"; error: string };
+  // reason 区分"本地兜底失败"与"上游瞬时失败"，调用方据此决定错误帧文案与是否可重试
+  | { ok: false; reason: "local" | "upstream"; error: string };
 
 export function vectorToBlob(v: Float32Array): Buffer {
   return Buffer.from(v.buffer, v.byteOffset, v.byteLength);
@@ -28,13 +27,15 @@ interface EmbeddingsResponse {
 export async function embedTexts(
   db: Database.Database,
   texts: string[],
-  opts: { fetchImpl: FetchLike },
+  opts: { fetchImpl: FetchLike; role?: EmbedRole },
 ): Promise<EmbedResult> {
   if (texts.length === 0) return { ok: true, vectors: [] };
   const resolved = resolveRoute(db, "embedding");
-  if (!resolved.ok) return { ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED };
+  // 用户显式配置的 OpenAI 兼容 embedding 路由优先；否则回落本地 ONNX 模型（无需 key/网络）
+  if (!resolved.ok || resolved.llm.client !== "openai") {
+    return embedTextsLocal(db, texts, opts.role ?? "passage");
+  }
   const { llm } = resolved;
-  if (llm.client !== "openai") return { ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED };
   try {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (llm.apiKey) headers.authorization = `Bearer ${llm.apiKey}`;
@@ -63,5 +64,19 @@ export async function embedTexts(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { ok: false, reason: "upstream", error: `embedding 调用失败: ${msg}` };
+  }
+}
+
+// 本地兜底：进程内 ONNX 模型（e5 要求按用途加 query:/passage: 前缀）
+async function embedTextsLocal(db: Database.Database, texts: string[], role: EmbedRole): Promise<EmbedResult> {
+  const prefix = E5_PREFIX[role];
+  try {
+    const vecs = await embedLocal(texts.map((t) => prefix + t));
+    db.prepare("INSERT INTO usage_log (task, provider_id, model, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)")
+      .run("embedding", null, LOCAL_EMBEDDING_MODEL, null, null);
+    return { ok: true, vectors: vecs.map((v) => new Float32Array(v)) };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, reason: "local", error: msg };
   }
 }

@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../src/db.js";
-import { embedTexts, vectorToBlob, blobToVector, EMBEDDING_UNCONFIGURED } from "../src/lib/embedding.js";
+import { embedTexts, vectorToBlob, blobToVector } from "../src/lib/embedding.js";
+import { setLocalPipelineFactory, LOCAL_EMBEDDING_MODEL, type LocalPipeline } from "../src/lib/embedding-local.js";
 
 const savedEnv = { ...process.env };
 
@@ -11,7 +12,18 @@ beforeEach(() => {
   delete process.env.PAPERWEAVE_BUILTIN_KEY;
   delete process.env.PAPERWEAVE_BUILTIN_BASE;
 });
-afterEach(() => { process.env = { ...savedEnv }; });
+afterEach(() => {
+  process.env = { ...savedEnv };
+  setLocalPipelineFactory(null);
+});
+
+// 本地 fallback 的假 pipeline：记录收到的文本，返回固定单位向量
+function fakeLocalPipeline(capture?: { calls: string[][] }): void {
+  setLocalPipelineFactory(async () => (async (texts: string[]) => {
+    capture?.calls.push(texts);
+    return { tolist: () => texts.map(() => [1, 0]) };
+  }) as LocalPipeline);
+}
 
 function fakeEmbeddingFetch(vectors: number[][], capture?: { url?: string; init?: RequestInit }): typeof fetch {
   return (async (url: unknown, init?: RequestInit) => {
@@ -49,25 +61,56 @@ describe("embedTexts", () => {
     db.close();
   });
 
-  it("returns a clear error when no embedding route is configured", async () => {
+  it("falls back to the local model with passage prefixes when no embedding route is configured", async () => {
     dir = mkdtempSync(join(tmpdir(), "pw-test-"));
     const db = openDb(dir);
-    let called = false;
-    const noFetch = (async () => { called = true; throw new Error("network"); }) as unknown as typeof fetch;
+    const capture = { calls: [] as string[][] };
+    fakeLocalPipeline(capture);
+    const noFetch = (async () => { throw new Error("network"); }) as unknown as typeof fetch;
     const result = await embedTexts(db, ["x"], { fetchImpl: noFetch });
-    expect(result).toEqual({ ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED });
-    expect(called).toBe(false);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Array.from(result.vectors[0])).toEqual([1, 0]);
+    expect(capture.calls).toEqual([["passage: x"]]);
+    const log = db.prepare("SELECT task, provider_id, model FROM usage_log").all() as { task: string; provider_id: string | null; model: string }[];
+    expect(log).toEqual([{ task: "embedding", provider_id: null, model: LOCAL_EMBEDDING_MODEL }]);
+    db.close();
+  });
+
+  it("applies the query prefix for role=query on the local fallback", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    const capture = { calls: [] as string[][] };
+    fakeLocalPipeline(capture);
+    const result = await embedTexts(db, ["什么是注意力？"], {
+      fetchImpl: (() => { throw new Error("network"); }) as unknown as typeof fetch,
+      role: "query",
+    });
+    expect(result.ok).toBe(true);
+    expect(capture.calls).toEqual([["query: 什么是注意力？"]]);
+    db.close();
+  });
+
+  it("surfaces local model download failures with a clear error", async () => {
+    dir = mkdtempSync(join(tmpdir(), "pw-test-"));
+    const db = openDb(dir);
+    setLocalPipelineFactory(async () => { throw new Error("ENETUNREACH"); });
+    const result = await embedTexts(db, ["x"], { fetchImpl: (() => { throw new Error("network"); }) as unknown as typeof fetch });
+    expect(result).toEqual({ ok: false, reason: "local", error: "本地 embedding 模型下载失败: ENETUNREACH" });
     expect(db.prepare("SELECT COUNT(*) AS n FROM usage_log").get()).toEqual({ n: 0 });
     db.close();
   });
 
-  it("returns an error when the embedding route resolves to an anthropic provider", async () => {
+  it("falls back to the local model when the embedding route resolves to an anthropic provider", async () => {
     dir = mkdtempSync(join(tmpdir(), "pw-test-"));
     const db = openDb(dir);
     db.prepare("INSERT INTO providers (id, kind, label, api_key) VALUES ('p1', 'anthropic', 'Claude', 'sk')").run();
     db.prepare("INSERT INTO task_routes (task, provider_id) VALUES ('embedding', 'p1')").run();
+    const capture = { calls: [] as string[][] };
+    fakeLocalPipeline(capture);
     const result = await embedTexts(db, ["x"], { fetchImpl: (() => { throw new Error("network"); }) as unknown as typeof fetch });
-    expect(result).toEqual({ ok: false, reason: "unconfigured", error: EMBEDDING_UNCONFIGURED });
+    expect(result.ok).toBe(true);
+    expect(capture.calls).toEqual([["passage: x"]]);
     db.close();
   });
 
@@ -82,7 +125,6 @@ describe("embedTexts", () => {
     if (!result.ok) {
       expect(result.reason).toBe("upstream");
       expect(result.error).toMatch(/429/);
-      expect(result.error).not.toBe(EMBEDDING_UNCONFIGURED);
     }
     expect(db.prepare("SELECT COUNT(*) AS n FROM usage_log").get()).toEqual({ n: 0 });
     db.close();

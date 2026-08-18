@@ -35,6 +35,12 @@
 // (prototype untouched) and dedupe consecutive identical popups, because the
 // view re-emits the same popup with an updated rect while scrolling.
 window.addEventListener('DOMContentLoaded', () => {
+	// Reading Mode is EPUB/HTML-only upstream; the button still shows for PDFs
+	// and errors when clicked. Hide it for our PDF-only reader.
+	const style = document.createElement('style');
+	style.textContent = 'button[aria-label="Reading Mode"],button[title="Reading Mode"]{display:none!important}';
+	document.head.appendChild(style);
+
 	const params = new URLSearchParams(window.location.search);
 	const file = params.get('file');
 	if (!file) {

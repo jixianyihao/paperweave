@@ -98,8 +98,12 @@ for pkg in better-sqlite3 bindings file-uri-to-path; do
 done
 # stage onnxruntime-node + sharp + @napi-rs/canvas（pdfjs polyfill）
 # + pdfjs-dist（SEA 下 worker 文件按文件路径加载）
-# + @napi-rs/canvas-darwin-arm64（canvas 的平台原生绑定）
-node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp @napi-rs/canvas pdfjs-dist @napi-rs/canvas-darwin-arm64
+node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp @napi-rs/canvas pdfjs-dist
+# @napi-rs/canvas 的原生绑定在平台专属可选包里（darwin-arm64 / win32-x64-msvc / linux-x64-gnu…）
+NAPI_PLATFORM_PKG="$(node -p 'const p=process.platform,a=process.arch; const key=`${p}-${a}`; ({ "darwin-arm64":"darwin-arm64", "darwin-x64":"darwin-x64", "win32-x64":"win32-x64-msvc", "linux-x64":"linux-x64-gnu", "linux-arm64":"linux-arm64-gnu" })[key] ?? ""')"
+if [ -n "$NAPI_PLATFORM_PKG" ]; then
+  node scripts/sea/stage-deps.cjs "$RES_DIR/backend" "@napi-rs/canvas-${NAPI_PLATFORM_PKG}"
+fi
 # bindings only needs its entry; drop prebuild noise
 rm -rf "$RES_DIR/backend/node_modules/better-sqlite3/obj" \
        "$RES_DIR/backend/node_modules/better-sqlite3/obj.target" \

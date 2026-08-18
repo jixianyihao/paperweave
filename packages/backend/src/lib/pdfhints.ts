@@ -21,7 +21,9 @@ export async function extractPdfHints(pdfBytes: Uint8Array): Promise<PdfHints> {
   const none: PdfHints = { doi: null, arxivId: null, firstText: "" };
   let text = "";
   try {
-    const doc = await getDocument({ data: pdfBytes, isEvalSupported: false }).promise;
+    // 传副本：pdfjs 可能 detach（转移）传入 buffer 的所有权，
+    // 调用方在提取后仍要用原始字节（如落盘保存）
+    const doc = await getDocument({ data: new Uint8Array(pdfBytes), isEvalSupported: false }).promise;
     const pages = Math.min(doc.numPages, 2);
     for (let p = 1; p <= pages; p++) {
       const page = await doc.getPage(p);

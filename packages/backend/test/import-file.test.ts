@@ -68,6 +68,9 @@ describe("POST /api/import/file", () => {
     expect(item.year).toBe(2017);
     expect(item.file_path).toBe(`files/${item.id}.pdf`);
     expect(existsSync(join(dir, "files", `${item.id}.pdf`))).toBe(true);
+    // 落盘内容必须与上传一致（回归：pdfjs detach 曾导致写出 0 字节文件）
+    const written = readFileSync(join(dir, "files", `${item.id}.pdf`));
+    expect(written.byteLength).toBe(sample.byteLength);
     await app.close();
   });
 

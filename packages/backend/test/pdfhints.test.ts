@@ -14,6 +14,13 @@ describe("extractPdfHints", () => {
     expect(hints.arxivId).toBe("1706.03762");
   });
 
+  it("does not detach the caller's buffer (pdfjs may transfer ownership)", async () => {
+    const bytes = new Uint8Array(sample);
+    const before = bytes.byteLength;
+    await extractPdfHints(bytes);
+    expect(bytes.byteLength).toBe(before);
+  });
+
   it("returns nulls for a text-free buffer", async () => {
     const hints = await extractPdfHints(new Uint8Array([37, 80, 68, 70])); // "%PDF" garbage
     expect(hints.doi).toBeNull();

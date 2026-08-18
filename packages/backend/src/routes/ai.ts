@@ -46,6 +46,7 @@ export function registerAiRoutes(app: FastifyInstance, db: Database.Database, de
     const result = await streamTask(db, task, messages, {
       fetchImpl: deps.fetchImpl,
       onDelta: (d) => { acc += d; sse.send({ delta: d }); },
+      onThinking: (d) => { sse.send({ thinking: d }); },
     });
     if (!result.ok) {
       sse.send({ error: result.error });

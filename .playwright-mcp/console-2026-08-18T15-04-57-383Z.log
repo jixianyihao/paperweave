@@ -1,0 +1,25 @@
+[     175ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items/MAWY6KVE' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/read/MAWY6KVE:0
+[     175ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items/MAWY6KVE:0
+[     178ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5199/favicon.ico:0
+[   62544ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[   62544ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items:0
+[   62545ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/collections' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[   62545ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/collections:0
+[   62545ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/tags' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[   62545ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/tags:0
+[ 1612939ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items?status=unread' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1612939ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items?status=unread:0
+[ 1613476ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1613476ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items:0
+[ 1617887ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1617887ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items:0
+[ 1617887ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/collections' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1617887ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/collections:0
+[ 1617887ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/tags' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1617887ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/tags:0
+[ 1619463ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/items' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1619463ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/items:0
+[ 1619463ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/collections' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1619463ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/collections:0
+[ 1619467ms] [ERROR] Access to fetch at 'http://127.0.0.1:8471/api/tags' from origin 'http://localhost:5199' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource. @ http://localhost:5199/:0
+[ 1619467ms] [ERROR] Failed to load resource: net::ERR_FAILED @ http://127.0.0.1:8471/api/tags:0

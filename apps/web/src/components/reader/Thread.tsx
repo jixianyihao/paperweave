@@ -11,6 +11,7 @@ interface ThreadMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  thinking?: string;
   pending?: boolean;
   error?: boolean;
 }
@@ -58,6 +59,8 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
         (frame) => {
           if (typeof frame.delta === "string") {
             patch((m) => ({ ...m, content: m.content + frame.delta }));
+          } else if (typeof frame.thinking === "string") {
+            patch((m) => ({ ...m, thinking: (m.thinking ?? "") + (frame.thinking as string) }));
           } else if (typeof frame.error === "string") {
             patch((m) => ({ ...m, content: frame.error as string, error: true }));
           }
@@ -101,6 +104,14 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
                     }`
               }
             >
+              {m.thinking && (
+                <details className="mb-1 rounded bg-cream dark:bg-dcream px-2 py-1 text-xs text-muted dark:text-dmuted" open={m.pending}>
+                  <summary className="cursor-pointer select-none font-sans">
+                    {m.pending ? "思考中…" : "思考过程"}
+                  </summary>
+                  <div className="mt-1 whitespace-pre-wrap leading-relaxed">{m.thinking}</div>
+                </details>
+              )}
               {m.role === "assistant" ? <CitedText text={m.content} onCite={onCite} markdown /> : m.content}
               {m.pending && <span data-streaming className="ml-1 animate-pulse text-muted dark:text-dmuted">▍</span>}
             </li>

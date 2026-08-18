@@ -1,0 +1,117 @@
+[     387ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:21548
+[     398ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:157
+[     398ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:157
+[     446ms] TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:3672:22)
+[     400ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:19751:22) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4061
+[     400ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:19751:22) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4061
+[     402ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:157
+[     402ms] [ERROR] Warning: Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:
+1. You might have mismatching versions of React and the renderer (such as React DOM)
+2. You might be breaking the Rules of Hooks
+3. You might have more than one copy of React in the same app
+See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem. @ http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:157
+[     447ms] TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at HTMLUnknownElement.callCallback2 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:3672:22)
+[     402ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:19751:22) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4061
+[     402ms] [ERROR] Error handled by React Router default ErrorBoundary: TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:19751:22) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4061
+[     404ms] [ERROR] The above error occurred in the <Root> component:
+
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at RenderedRoute (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4120:5)
+    at RenderErrorBoundary (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4080:5)
+    at DataRoutes (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:5263:5)
+    at Router (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4533:15)
+    at RouterProvider (http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:5077:5)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14029
+[     404ms] [ERROR] React Router caught the following error during render TypeError: Cannot read properties of null (reading 'useRef')
+    at useRef (http://localhost:5173/node_modules/.vite/deps/chunk-IGB2AZES.js?v=267d4161:1096:29)
+    at exports.useSyncExternalStoreWithSelector (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:94:23)
+    at useStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:208:17)
+    at useBoundStore (http://localhost:5173/node_modules/.vite/deps/zustand.js?v=3335b37d:225:51)
+    at useGlobalImportDrop (http://localhost:5173/src/hooks/useGlobalImportDrop.ts:7:16)
+    at Root (http://localhost:5173/src/components/Root.tsx:28:3)
+    at renderWithHooks (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:11546:26)
+    at mountIndeterminateComponent (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:14924:21)
+    at beginWork (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:15912:22)
+    at beginWork$1 (http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=8e58a82e:19751:22) {componentStack: 
+    at Root (http://localhost:5173/src/components….vite/deps/react-router-dom.js?v=528e4ab4:5077:5)} @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4106
+[     405ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=528e4ab4:4424
+[     587ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-NEPDRNXC.js?v=267d4161:21548
+[     603ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:4424
+[   13315ms] [WARNING] No routes matched location "/reader/reader.html?file=/samples/sample.pdf"  @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:206
+[   13315ms] [WARNING] No routes matched location "/reader/reader.html?file=/samples/sample.pdf"  @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:206
+[   13315ms] [ERROR] Error handled by React Router default ErrorBoundary: ErrorResponseImpl @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:4061
+[   13316ms] [ERROR] Error handled by React Router default ErrorBoundary: ErrorResponseImpl @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:4061
+[   13316ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=267d4161:4424

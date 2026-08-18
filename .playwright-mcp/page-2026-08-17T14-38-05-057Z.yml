@@ -1,0 +1,83 @@
+- generic [ref=f6e1]:
+  - generic [ref=f6e3]:
+    - navigation "文献库导航" [ref=f6e4]:
+      - generic [ref=f6e5]: PaperWeave
+      - button "📁 全部文献" [ref=f6e6] [cursor=pointer]
+      - button "🏷 待读" [ref=f6e7] [cursor=pointer]
+      - button "📖 在读" [ref=f6e8] [cursor=pointer]
+      - button "✓ 已读" [ref=f6e9] [cursor=pointer]
+      - button "⭐ 收藏" [ref=f6e10] [cursor=pointer]
+      - generic [ref=f6e11]: 集合
+      - paragraph [ref=f6e12]: 暂无集合
+      - generic [ref=f6e13]: 标签
+      - paragraph [ref=f6e14]: 暂无标签
+    - generic [ref=f6e15]:
+      - banner [ref=f6e16]:
+        - button "导入" [ref=f6e17] [cursor=pointer]
+        - button "搜索 / 命令（⌘K）" [ref=f6e18] [cursor=pointer]
+        - button "切换主题" [ref=f6e19] [cursor=pointer]: ☾ 暗色
+        - link "设置" [ref=f6e20] [cursor=pointer]:
+          - /url: /settings
+      - main "条目列表" [ref=f6e21]:
+        - paragraph [ref=f6e22]: 没有文献。拖拽 PDF 到窗口，或按 ⌘K 选择「导入文献」。
+        - listbox "文献"
+    - complementary "AI 预览面板" [ref=f6e23]:
+      - paragraph [ref=f6e24]: 选中左侧条目查看详情
+  - iframe [active] [ref=f6e25]:
+    - generic [ref=f7e1]:
+      - generic [ref=f7e3]:
+        - application [ref=f7e4]:
+          - generic [ref=f7e5]:
+            - button "Toggle Sidebar" [ref=f7e6] [cursor=pointer]
+            - button "Zoom Out" [ref=f7e11] [cursor=pointer]
+            - button "Zoom In" [ref=f7e14] [cursor=pointer]
+            - button "Reset Zoom" [disabled]
+            - button "Reading Mode" [ref=f7e17] [cursor=pointer]
+            - button "Back" [disabled]
+            - button "Previous Page" [disabled]
+            - button "Next Page" [ref=f7e23] [cursor=pointer]
+            - textbox "Page" [ref=f7e26]: "1"
+            - generic [ref=f7e27]: / 15
+          - generic [ref=f7e29]:
+            - button "Highlight Text" [ref=f7e30] [cursor=pointer]
+            - button "Underline Text" [ref=f7e33] [cursor=pointer]
+            - button "Note Annotation" [ref=f7e36] [cursor=pointer]
+            - button "Add Text" [ref=f7e39] [cursor=pointer]
+            - button "Select Area" [ref=f7e42] [cursor=pointer]
+            - button "Draw" [ref=f7e47] [cursor=pointer]
+            - button "Pick a Color" [disabled]
+          - generic [ref=f7e52]:
+            - button "Appearance" [ref=f7e53] [cursor=pointer]
+            - button "Find in Document" [ref=f7e57] [cursor=pointer]
+        - application [ref=f7e60]:
+          - generic [ref=f7e61]:
+            - tablist [ref=f7e62]:
+              - tab "Show Thumbnails" [ref=f7e63] [cursor=pointer]
+              - tab "Show Annotations" [selected] [ref=f7e66] [cursor=pointer]
+              - tab "Show Outline" [ref=f7e69] [cursor=pointer]
+            - generic [ref=f7e73]:
+              - textbox "Search Annotations"
+          - tabpanel [ref=f7e78]:
+            - listbox [ref=f7e79]:
+              - generic [ref=f7e80]: Create an annotation to see it in the sidebar
+      - iframe [active] [ref=f7e85]:
+        - generic [ref=f8e1]:
+          - alert
+          - generic [ref=f8e4]:
+            - 'region "Page: cd 1" [ref=f8e5]':
+              - generic [ref=f8e7]: Provided proper attribution is provided, Google hereby grants permission to reproduce the tables and figures in this paper solely for use in journalistic or scholarly works. Attention Is All You Need Ashish Vaswani ∗ Google Brain avaswani@google.com Noam Shazeer ∗ Google Brain noam@google.com Niki Parmar ∗ Google Research nikip@google.com Jakob Uszkoreit ∗ Google Research usz@google.com Llion Jones ∗ Google Research llion@google.com Aidan N. Gomez ∗ † University of Toronto aidan@cs.toronto.edu Łukasz Kaiser ∗ Google Brain lukaszkaiser@google.com Illia Polosukhin ∗ ‡ illia.polosukhin@gmail.com Abstract The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder. The best performing models also connect the encoder and decoder through an attention mechanism. We propose a new simple network architecture, the Transformer, based solely on attention mechanisms, dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks show these models to be superior in quality while being more parallelizable and requiring significantly less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English- to-German translation task, improving over the existing best results, including ensembles, by over 2 BLEU. On the WMT 2014 English-to-French translation task, our model establishes a new single-model state-of-the-art BLEU score of 41.8 after training for 3.5 days on eight GPUs, a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data. ∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled dot-product attention, multi-head attention and the parameter-free position representation and became the other person involved in nearly every detail. Niki designed, implemented, tuned and evaluated countless model variants in our original codebase and tensor2tensor. Llion also experimented with novel model variants, was responsible for our initial codebase, and efficient inference and visualizations. Lukasz and Aidan spent countless long days designing various parts of and implementing tensor2tensor, replacing our earlier codebase, greatly improving results and massively accelerating our research. † Work performed while at Google Brain. ‡ Work performed while at Google Research. 31st Conference on Neural Information Processing Systems (NIPS 2017), Long Beach, CA, USA. arXiv:1706.03762v7 [cs.CL] 2 Aug 2023
+            - 'region "Page: cd 2" [ref=f8e8]':
+              - generic [ref=f8e10]: 1 Introduction Recurrent neural networks, long short-term memory [13] and gated recurrent [7] neural networks in particular, have been firmly established as state of the art approaches in sequence modeling and transduction problems such as language modeling and machine translation [35, 2, 5]. Numerous efforts have since continued to push the boundaries of recurrent language models and encoder-decoder architectures [38, 24, 15]. Recurrent models typically factor computation along the symbol positions of the input and output sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden states h t , as a function of the previous hidden state h t − 1 and the input for position t . This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer sequence lengths, as memory constraints limit batching across examples. Recent work has achieved significant improvements in computational efficiency through factorization tricks [21] and conditional computation [32], while also improving model performance in case of the latter. The fundamental constraint of sequential computation, however, remains. Attention mechanisms have become an integral part of compelling sequence modeling and transduc- tion models in various tasks, allowing modeling of dependencies without regard to their distance in the input or output sequences [2, 19]. In all but a few cases [27], however, such attention mechanisms are used in conjunction with a recurrent network. In this work we propose the Transformer, a model architecture eschewing recurrence and instead relying entirely on an attention mechanism to draw global dependencies between input and output. The Transformer allows for significantly more parallelization and can reach a new state of the art in translation quality after being trained for as little as twelve hours on eight P100 GPUs. 2 Background The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU [16], ByteNet [18] and ConvS2S [9], all of which use convolutional neural networks as basic building block, computing hidden representations in parallel for all input and output positions. In these models, the number of operations required to relate signals from two arbitrary input or output positions grows in the distance between positions, linearly for ConvS2S and logarithmically for ByteNet. This makes it more difficult to learn dependencies between distant positions [12]. In the Transformer this is reduced to a constant number of operations, albeit at the cost of reduced effective resolution due to averaging attention-weighted positions, an effect we counteract with Multi-Head Attention as described in section 3.2. Self-attention, sometimes called intra-attention is an attention mechanism relating different positions of a single sequence in order to compute a representation of the sequence. Self-attention has been used successfully in a variety of tasks including reading comprehension, abstractive summarization, textual entailment and learning task-independent sentence representations [4, 27, 28, 22]. End-to-end memory networks are based on a recurrent attention mechanism instead of sequence- aligned recurrence and have been shown to perform well on simple-language question answering and language modeling tasks [34]. To the best of our knowledge, however, the Transformer is the first transduction model relying entirely on self-attention to compute representations of its input and output without using sequence- aligned RNNs or convolution. In the following sections, we will describe the Transformer, motivate self-attention and discuss its advantages over models such as [17, 18] and [9]. 3 Model Architecture Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35]. Here, the encoder maps an input sequence of symbol representations ( x 1 , ..., x n ) to a sequence of continuous representations z = ( z 1 , ..., z n ) . Given z , the decoder then generates an output sequence ( y 1 , ..., y m ) of symbols one element at a time. At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input when generating the next. 2
+            - 'region "Page: cd 3" [ref=f8e11]'
+            - 'region "Page: cd 4" [ref=f8e12]'
+            - 'region "Page: cd 5" [ref=f8e13]'
+            - 'region "Page: cd 6" [ref=f8e14]'
+            - 'region "Page: cd 7" [ref=f8e15]'
+            - 'region "Page: cd 8" [ref=f8e16]'
+            - 'region "Page: cd 9" [ref=f8e17]'
+            - 'region "Page: cd 10" [ref=f8e18]'
+            - 'region "Page: cd 11" [ref=f8e19]'
+            - 'region "Page: cd 12" [ref=f8e20]'
+            - 'region "Page: cd 13" [ref=f8e21]'
+            - 'region "Page: cd 14" [ref=f8e22]'
+            - 'region "Page: cd 15" [ref=f8e23]'

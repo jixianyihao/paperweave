@@ -206,6 +206,8 @@ export default function ReaderPage() {
           (frame) => {
             if (typeof frame.delta === "string") {
               patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
+            } else if (typeof frame.thinking === "string") {
+              patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
             } else if (typeof frame.error === "string") {
               hadError = true;
               patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
@@ -342,6 +344,8 @@ export default function ReaderPage() {
         (frame) => {
           if (typeof frame.delta === "string") {
             patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
+          } else if (typeof frame.thinking === "string") {
+            patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
           } else if (typeof frame.error === "string") {
             patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
           } else if (frame.done) {

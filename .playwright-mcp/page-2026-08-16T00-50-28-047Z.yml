@@ -1,0 +1,12 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]: PaperWeave
+    - button "📁 全部文献" [ref=e6] [cursor=pointer]
+    - button "🏷 待读" [ref=e7] [cursor=pointer]
+    - button "⭐ 收藏" [ref=e8] [cursor=pointer]
+    - button "📖 在读" [ref=e9] [cursor=pointer]
+    - button "✓ 已读" [ref=e10] [cursor=pointer]
+  - main [ref=e11]:
+    - paragraph [ref=e12]: 文献列表将在阶段 2 实现
+  - complementary [ref=e13]:
+    - paragraph [ref=e14]: AI 预览面板将在阶段 2 实现

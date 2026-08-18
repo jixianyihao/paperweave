@@ -51,22 +51,30 @@ EOF
 node --experimental-sea-config "$WORK/sea-config.json"
 
 # 3. copy the node runtime binary and inject the blob
+OS="$(uname -s)"
 NODE_BIN="$(command -v node)"
-cp "$NODE_BIN" "$WORK/paperweave-backend"
-if [ "$(uname)" = "Darwin" ]; then
-  codesign --remove-signature "$WORK/paperweave-backend" || true
+EXE_SUFFIX=""
+case "$TRIPLE" in *windows*) EXE_SUFFIX=".exe";; esac
+case "$OS" in MINGW*|MSYS*|CYGWIN*) [ -z "$EXE_SUFFIX" ] && EXE_SUFFIX=".exe";; esac
+cp "$NODE_BIN" "$WORK/paperweave-backend${EXE_SUFFIX}"
+if [ "$OS" = "Darwin" ]; then
+  codesign --remove-signature "$WORK/paperweave-backend${EXE_SUFFIX}" || true
 fi
-"$POSTJECT" "$WORK/paperweave-backend" NODE_SEA_BLOB "$WORK/backend.blob" \
+SEA_OPTS=()
+if [ "$OS" = "Darwin" ]; then
+  SEA_OPTS=(--macho-segment-name NODE_SEA)
+fi
+"$POSTJECT" "$WORK/paperweave-backend${EXE_SUFFIX}" NODE_SEA_BLOB "$WORK/backend.blob" \
   --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2 \
-  ${MACOS_SEA_OPTS:---macho-segment-name NODE_SEA}
-if [ "$(uname)" = "Darwin" ]; then
-  codesign --sign - "$WORK/paperweave-backend"   # ad-hoc; re-signed by tauri build
+  ${MACOS_SEA_OPTS:+"$MACOS_SEA_OPTS"} ${SEA_OPTS:+"${SEA_OPTS[@]}"}
+if [ "$OS" = "Darwin" ]; then
+  codesign --sign - "$WORK/paperweave-backend${EXE_SUFFIX}"   # ad-hoc; re-signed by tauri build
 fi
 
 # 4. place sidecar binary where tauri externalBin expects it
 mkdir -p apps/desktop/src-tauri/binaries
-cp "$WORK/paperweave-backend" "$OUT_BIN"
-chmod +x "$OUT_BIN"
+cp "$WORK/paperweave-backend${EXE_SUFFIX}" "${OUT_BIN}${EXE_SUFFIX}"
+chmod +x "${OUT_BIN}${EXE_SUFFIX}" 2>/dev/null || true
 
 # 5. stage runtime resources: native node_modules + migrations
 #    layout inside the .app:  Resources/backend/node_modules/...

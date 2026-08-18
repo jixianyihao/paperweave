@@ -127,7 +127,7 @@ export async function streamTask(
   db: Database.Database,
   task: AiTask,
   messages: ChatMessage[],
-  opts: { fetchImpl: FetchLike; onDelta: DeltaHandler; maxTokens?: number },
+  opts: { fetchImpl: FetchLike; onDelta: DeltaHandler; onThinking?: DeltaHandler; maxTokens?: number },
 ): Promise<StreamTaskResult> {
   const resolved = resolveRoute(db, task);
   if (!resolved.ok) return { ok: false, error: resolved.error };
@@ -135,7 +135,7 @@ export async function streamTask(
   try {
     const usage = llm.client === "anthropic"
       ? await streamAnthropicChat({ baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model, messages, maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl, onDelta: opts.onDelta })
-      : await streamOpenAiChat({ baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model, messages, maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl, onDelta: opts.onDelta });
+      : await streamOpenAiChat({ baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model, messages, maxTokens: opts.maxTokens, fetchImpl: opts.fetchImpl, onDelta: opts.onDelta, onThinking: opts.onThinking });
     db.prepare("INSERT INTO usage_log (task, provider_id, model, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)")
       .run(task, llm.providerId, llm.model, usage.tokensIn, usage.tokensOut);
     return { ok: true, ...usage };

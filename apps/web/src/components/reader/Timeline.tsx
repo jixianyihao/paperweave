@@ -19,6 +19,7 @@ export interface TimelineEntry {
   error?: string | null;
   question?: string; // ai_qa：用户问题，content 为回答
   citations?: Citation[]; // ask done 帧的结构化引用
+  thinking?: string; // 模型思考过程（reasoning_content，仅流式期间展示，不落库）
 }
 
 const TYPE_META: Record<Annotation["type"], { label: string; border: string }> = {
@@ -88,6 +89,14 @@ export default function Timeline({
             </div>
             {e.question && (
               <p className="mb-1 text-sm font-sans font-bold text-ink dark:text-dink">Q：{e.question}</p>
+            )}
+            {e.thinking && (
+              <details className="mb-1 rounded bg-cream dark:bg-dpaper px-2 py-1 text-xs text-muted dark:text-dmuted" open={e.pending}>
+                <summary className="cursor-pointer select-none font-sans">
+                  {e.pending ? "思考中…" : "思考过程"}
+                </summary>
+                <div className="mt-1 whitespace-pre-wrap leading-relaxed">{e.thinking}</div>
+              </details>
             )}
             {e.error ? (
               <p className="text-sm text-red-700 dark:text-red-400">{e.error}</p>

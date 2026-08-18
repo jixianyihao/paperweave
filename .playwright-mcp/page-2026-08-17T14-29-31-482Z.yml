@@ -1,0 +1,24 @@
+- generic [ref=f1e3]:
+  - navigation "文献库导航" [ref=f1e4]:
+    - generic [ref=f1e5]: PaperWeave
+    - button "📁 全部文献" [ref=f1e6] [cursor=pointer]
+    - button "🏷 待读" [ref=f1e7] [cursor=pointer]
+    - button "📖 在读" [ref=f1e8] [cursor=pointer]
+    - button "✓ 已读" [ref=f1e9] [cursor=pointer]
+    - button "⭐ 收藏" [ref=f1e10] [cursor=pointer]
+    - generic [ref=f1e11]: 集合
+    - paragraph [ref=f1e12]: 暂无集合
+    - generic [ref=f1e13]: 标签
+    - paragraph [ref=f1e14]: 暂无标签
+  - generic [ref=f1e15]:
+    - banner [ref=f1e16]:
+      - button "导入" [ref=f1e17] [cursor=pointer]
+      - button "搜索 / 命令（⌘K）" [ref=f1e18] [cursor=pointer]
+      - button "切换主题" [ref=f1e19] [cursor=pointer]: ☾ 暗色
+      - link "设置" [ref=f1e20] [cursor=pointer]:
+        - /url: /settings
+    - main "条目列表" [ref=f1e21]:
+      - paragraph [ref=f1e22]: 没有文献。拖拽 PDF 到窗口，或按 ⌘K 选择「导入文献」。
+      - listbox "文献"
+  - complementary "AI 预览面板" [ref=f1e23]:
+    - paragraph [ref=f1e24]: 选中左侧条目查看详情

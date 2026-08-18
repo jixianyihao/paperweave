@@ -1,0 +1,11 @@
+- iframe [ref=f1e3]:
+  - generic [ref=f2e2]:
+    - heading "Unexpected Application Error!" [level=2] [ref=f2e3]
+    - heading "404 Not Found" [level=3] [ref=f2e4]
+    - paragraph [ref=f2e5]: 💿 Hey developer 👋
+    - paragraph [ref=f2e6]:
+      - text: You can provide a way better UX than this when your app throws errors by providing your own
+      - code [ref=f2e7]: ErrorBoundary
+      - text: or
+      - code [ref=f2e8]: errorElement
+      - text: prop on your route.

@@ -140,6 +140,7 @@ export function registerAnnotationRoutes(app: FastifyInstance, db: Database.Data
     const result = await streamTask(db, "qa", qaMessages(annotation.content, history, ctx), {
       fetchImpl: deps.fetchImpl,
       onDelta: (d) => { acc += d; sse.send({ delta: d }); },
+      onThinking: (d) => { sse.send({ thinking: d }); },
     });
     if (!result.ok) {
       sse.send({ error: result.error });

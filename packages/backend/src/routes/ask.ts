@@ -113,6 +113,7 @@ export function registerAskRoutes(app: FastifyInstance, db: Database.Database, d
     const result = await streamTask(db, "qa", fullTextQaMessages(question, top), {
       fetchImpl: deps.fetchImpl,
       onDelta: (d) => { acc += d; sse.send({ delta: d }); },
+      onThinking: (d) => { sse.send({ thinking: d }); },
     });
     if (!result.ok) {
       sse.send({ error: result.error });

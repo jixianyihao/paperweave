@@ -39,9 +39,15 @@ for f in 32x32.png 128x128.png 128x128@2x.png icon.icns icon.ico; do
   [ -f "apps/desktop/src-tauri/icons/$f" ] || { echo "ERROR: icons/$f missing — run (cd apps/desktop && pnpm tauri icon icon-src.png)"; exit 1; }
 done
 
-# 5. tauri build → .app + .dmg (ad-hoc signed)
+# 5. tauri build → per-OS bundles
 echo "== building tauri app"
 pnpm -F @paperweave/desktop build
 
+# 6. macOS 额外打 DMG（ad-hoc 签名）
+if [ "$(uname -s)" = "Darwin" ]; then
+  echo "== packaging DMG (macOS)"
+  bash scripts/make-dmg.sh
+fi
+
 echo "== done. Artifacts:"
-find apps/desktop/src-tauri/target/release/bundle -maxdepth 2 \( -name "*.dmg" -o -name "*.app" \) -exec du -sh {} \; 2>/dev/null || true
+find apps/desktop/src-tauri/target/release/bundle -maxdepth 3 \( -name "*.dmg" -o -name "*.app" -o -name "*.msi" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec du -sh {} \; 2>/dev/null || true

@@ -8,6 +8,8 @@ export interface OpenAiChatOptions {
   maxTokens?: number;
   fetchImpl?: FetchLike;
   onDelta: DeltaHandler;
+  /** 思考过程增量（Kimi K2.6 / DeepSeek R1 等的 reasoning_content） */
+  onThinking?: DeltaHandler;
 }
 
 function endpoint(baseUrl: string, path: string): string {
@@ -37,10 +39,12 @@ export async function streamOpenAiChat(opts: OpenAiChatOptions): Promise<LlmUsag
   await readSse(res, (data) => {
     if (data === "[DONE]") return;
     let parsed: {
-      choices?: { delta?: { content?: string } }[];
+      choices?: { delta?: { content?: string; reasoning_content?: string } }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     try { parsed = JSON.parse(data); } catch { return; }
+    const thinking = parsed.choices?.[0]?.delta?.reasoning_content;
+    if (typeof thinking === "string" && thinking) opts.onThinking?.(thinking);
     const delta = parsed.choices?.[0]?.delta?.content;
     if (typeof delta === "string" && delta) opts.onDelta(delta);
     if (parsed.usage) {

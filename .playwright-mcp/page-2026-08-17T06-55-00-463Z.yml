@@ -1,0 +1,55 @@
+- generic [ref=f1e3]:
+  - navigation "文献库导航" [ref=f1e4]:
+    - generic [ref=f1e5]: PaperWeave
+    - button "📁 全部文献" [ref=f1e6] [cursor=pointer]
+    - button "🏷 待读" [ref=f1e7] [cursor=pointer]
+    - button "📖 在读" [ref=f1e8] [cursor=pointer]
+    - button "✓ 已读" [ref=f1e9] [cursor=pointer]
+    - button "⭐ 收藏" [ref=f1e10] [cursor=pointer]
+    - generic [ref=f1e11]: 集合
+    - button "Transformer 基础2" [ref=f1e12] [cursor=pointer]
+    - button "预训练模型1" [ref=f1e13] [cursor=pointer]
+    - generic [ref=f1e14]: 标签
+    - generic [ref=f1e15]:
+      - button "nlp (3)" [ref=f1e16] [cursor=pointer]
+      - button "attention (1)" [ref=f1e17] [cursor=pointer]
+  - generic [ref=f1e18]:
+    - banner [ref=f1e19]:
+      - button "导入" [ref=f1e20] [cursor=pointer]
+      - button "搜索 / 命令（⌘K）" [ref=f1e21] [cursor=pointer]
+      - button "切换主题" [ref=f1e22] [cursor=pointer]: ☾ 暗色
+      - link "设置" [ref=f1e23] [cursor=pointer]:
+        - /url: /settings
+    - main "条目列表" [ref=f1e24]:
+      - listbox "文献" [ref=f1e25]:
+        - option [ref=f1e26]:
+          - button "A Metadata-Only Entry Without PDFJane Doe · 2024待读" [ref=f1e27] [cursor=pointer]:
+            - generic [ref=f1e28]:
+              - text: A Metadata-Only Entry Without PDF
+              - generic [ref=f1e29]: Jane Doe · 2024
+            - text: 待读
+        - option [ref=f1e30]:
+          - button "Untitled (元数据抓取失败)佚名元数据失败待读" [ref=f1e31] [cursor=pointer]:
+            - generic [ref=f1e32]: Untitled (元数据抓取失败)佚名
+            - text: 元数据失败待读
+        - option [ref=f1e33]:
+          - button "Language Models are Few-Shot LearnersTom B. Brown · 2020 · NeurIPS待读" [ref=f1e34] [cursor=pointer]:
+            - generic [ref=f1e35]:
+              - text: Language Models are Few-Shot Learners
+              - generic [ref=f1e36]: Tom B. Brown · 2020 · NeurIPS
+            - text: 待读
+        - option [ref=f1e37]:
+          - 'button "BERT: Pre-training of Deep Bidirectional TransformersJacob Devlin, Ming-Wei Chang · 2019 · NAACL在读" [ref=f1e38] [cursor=pointer]':
+            - generic [ref=f1e39]:
+              - text: "BERT: Pre-training of Deep Bidirectional Transformers"
+              - generic [ref=f1e40]: Jacob Devlin, Ming-Wei Chang · 2019 · NAACL
+            - text: 在读
+        - option [ref=f1e41]:
+          - button "Attention Is All You NeedAshish Vaswani, Noam Shazeer · 2017 · NeurIPS已读" [ref=f1e42] [cursor=pointer]:
+            - text: ★
+            - generic [ref=f1e43]:
+              - text: Attention Is All You Need
+              - generic [ref=f1e44]: Ashish Vaswani, Noam Shazeer · 2017 · NeurIPS
+            - text: 已读
+  - complementary "AI 预览面板" [ref=f1e45]:
+    - paragraph [ref=f1e46]: 选中左侧条目查看详情

@@ -1,6 +1,7 @@
 // 引用锚点渲染：assistant 文本里的 `[P{page}]` 标记与结构化 citations 统一渲染为可点击按钮 → 桥 jumpTo。
 import type { ReactNode } from "react";
 import type { Citation } from "../../api/types";
+import MarkdownText from "./MarkdownText";
 
 const CITE_RE = /\[P(\d+)\]/g;
 
@@ -19,10 +20,23 @@ export function splitCitationSegments(text: string): Segment[] {
   return out;
 }
 
-export function CitedText({ text, onCite }: { text: string; onCite?: (page: number) => void }) {
+export function CitedText({
+  text,
+  onCite,
+  markdown = false,
+}: {
+  text: string;
+  onCite?: (page: number) => void;
+  /** AI 产出传 true：文本段走 markdown 渲染（引用原文等保持 false，避免误解析星号等字符） */
+  markdown?: boolean;
+}) {
   const nodes: ReactNode[] = splitCitationSegments(text).map((seg, i) =>
     seg.kind === "text" ? (
-      <span key={i}>{seg.value}</span>
+      markdown ? (
+        <MarkdownText key={i} text={seg.value} />
+      ) : (
+        <span key={i}>{seg.value}</span>
+      )
     ) : (
       <button
         key={i}

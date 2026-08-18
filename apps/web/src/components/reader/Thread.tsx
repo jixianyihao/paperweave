@@ -101,7 +101,7 @@ export default function Thread({ annotationId, defaultOpen = false }: { annotati
                     }`
               }
             >
-              {m.role === "assistant" ? <CitedText text={m.content} onCite={onCite} /> : m.content}
+              {m.role === "assistant" ? <CitedText text={m.content} onCite={onCite} markdown /> : m.content}
               {m.pending && <span data-streaming className="ml-1 animate-pulse text-muted dark:text-dmuted">▍</span>}
             </li>
           ))}

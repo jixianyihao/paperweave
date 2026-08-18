@@ -93,7 +93,7 @@ export default function Timeline({
               <p className="text-sm text-red-700 dark:text-red-400">{e.error}</p>
             ) : (
               <div className="text-sm leading-relaxed text-ink dark:text-dink">
-                <CitedText text={e.content} onCite={onCite} />
+                <CitedText text={e.content} onCite={onCite} markdown={isAi || e.type === "voice_digest"} />
                 {e.pending && (
                   <span data-streaming className="ml-1 animate-pulse text-muted dark:text-dmuted">
                     ▍

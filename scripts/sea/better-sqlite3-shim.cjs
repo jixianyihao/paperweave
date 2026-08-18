@@ -4,8 +4,10 @@
 // PAPERWEAVE_BACKEND_HOME points at <app-resources>/backend, which contains
 // node_modules/{better-sqlite3,bindings,file-uri-to-path}.
 const { createRequire } = require("node:module");
-const { join } = require("node:path");
+const { join, resolve } = require("node:path");
 
-const home = process.env.PAPERWEAVE_BACKEND_HOME || __dirname;
+// resolve(): createRequire demands an absolute path; the desktop launcher may
+// pass a relative PAPERWEAVE_BACKEND_HOME
+const home = resolve(process.env.PAPERWEAVE_BACKEND_HOME || __dirname);
 const req = createRequire(join(home, "paperweave-backend.cjs"));
 module.exports = req("better-sqlite3");

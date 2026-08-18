@@ -29,13 +29,21 @@ rm -rf "$WORK"
 mkdir -p "$WORK"
 
 # 1. bundle backend to a single CJS file
-#    - better-sqlite3 aliased to a createRequire shim (SEA require() is builtins-only)
+#    - native deps (better-sqlite3, onnxruntime-node, sharp) aliased to
+#      createRequire shims (SEA require() is builtins-only); real packages
+#      staged into resources in step 5
+#    - onnxruntime-web aliased to an empty stub: transformers imports it
+#      alongside onnxruntime-node but only uses it in browsers
 #    - import.meta.dirname redirected to PAPERWEAVE_BACKEND_HOME at runtime
 "$ESBUILD" scripts/sea/entry.ts \
   --bundle --platform=node --format=cjs --target=node20 \
   --alias:better-sqlite3=./scripts/sea/better-sqlite3-shim.cjs \
+  --alias:onnxruntime-node=./scripts/sea/onnxruntime-node-shim.cjs \
+  --alias:onnxruntime-web=./scripts/sea/onnxruntime-web-stub.cjs \
+  --alias:sharp=./scripts/sea/sharp-shim.cjs \
   "--define:import.meta.dirname=globalThis.__PW_DIRNAME__" \
-  "--banner:js=globalThis.__PW_DIRNAME__ = process.env.PAPERWEAVE_BACKEND_HOME || __dirname;" \
+  "--define:import.meta.url=globalThis.__PW_IMPORT_META_URL__" \
+  "--banner:js=globalThis.__PW_DIRNAME__ = process.env.PAPERWEAVE_BACKEND_HOME || __dirname; globalThis.__PW_IMPORT_META_URL__ = require(\"node:url\").pathToFileURL(require(\"node:path\").resolve(globalThis.__PW_DIRNAME__, \"paperweave-backend.cjs\")).href;" \
   --outfile="$WORK/backend.cjs"
 
 # 2. SEA prep blob
@@ -87,12 +95,28 @@ for pkg in better-sqlite3 bindings file-uri-to-path; do
   src="$(node scripts/sea/resolve-pkg.cjs "$pkg")" || exit 1
   cp -RL "$src" "$RES_DIR/backend/node_modules/${pkg}"
 done
+# stage onnxruntime-node + sharp (and their runtime dep closures, e.g.
+# onnxruntime-common, color, detect-libc, semver) including native binaries
+node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp
 # bindings only needs its entry; drop prebuild noise
 rm -rf "$RES_DIR/backend/node_modules/better-sqlite3/obj" \
        "$RES_DIR/backend/node_modules/better-sqlite3/obj.target" \
        "$RES_DIR/backend/node_modules/better-sqlite3/src" \
        "$RES_DIR/backend/node_modules/better-sqlite3/deps" \
        "$RES_DIR/backend/node_modules/better-sqlite3/prebuilds" 2>/dev/null || true
+# keep only the host platform's onnxruntime binding (tarball ships all six)
+HOST_OS="$(node -p 'process.platform')"
+HOST_ARCH="$(node -p 'process.arch')"
+ORT_BIN="$RES_DIR/backend/node_modules/onnxruntime-node/bin/napi-v3"
+if [ -d "$ORT_BIN" ]; then
+  for os_dir in "$ORT_BIN"/*; do
+    [ "$(basename "$os_dir")" = "$HOST_OS" ] || rm -rf "$os_dir"
+  done
+  for arch_dir in "$ORT_BIN/$HOST_OS"/*; do
+    [ -d "$arch_dir" ] || continue
+    [ "$(basename "$arch_dir")" = "$HOST_ARCH" ] || rm -rf "$arch_dir"
+  done
+fi
 
 echo "SEA sidecar: $OUT_BIN ($(du -h "$OUT_BIN" | cut -f1))"
 echo "resources:   $RES_DIR/backend/node_modules, $RES_DIR/migrations"

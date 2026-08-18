@@ -16,6 +16,7 @@ import {
 import type { Annotation, Citation, ExplainLevel, Item } from "./api/types";
 import { attachReaderBridge, type ReaderSelection } from "./reader/bridge";
 import { ReaderBridgeContext, type ReaderBridgeApi } from "./reader/bridgeContext";
+import { useResizableWidth } from "./hooks/useResizableWidth";
 import { useToastStore } from "./stores/toastStore";
 import AskBox from "./components/reader/AskBox";
 import FloatingMenu from "./components/reader/FloatingMenu";
@@ -64,6 +65,7 @@ export default function ReaderPage() {
   const [bridgeApi, setBridgeApi] = useState<ReaderBridgeApi | null>(null);
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
+  const { width: timelineWidth, handle: timelineHandle } = useResizableWidth("pw-timeline-width", 384);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bridgeRef = useRef<ReturnType<typeof attachReaderBridge> | null>(null);
   /** 进行中 SSE 请求的 AbortController 集合；卸载时统一 abort */
@@ -441,8 +443,10 @@ export default function ReaderPage() {
         </div>
         <aside
           aria-label="时间流"
-          className="flex w-96 shrink-0 flex-col border-l border-line dark:border-dline bg-cream dark:bg-dcream"
+          style={{ width: timelineWidth }}
+          className="relative flex shrink-0 flex-col border-l border-line dark:border-dline bg-cream dark:bg-dcream"
         >
+          {timelineHandle}
           <header className="border-b border-line dark:border-dline px-3 py-2">
             <h1 className="truncate text-sm font-bold" title={item.title}>
               {item.title}

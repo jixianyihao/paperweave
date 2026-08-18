@@ -5,6 +5,7 @@ import { ApiError, type SseFrame } from "../api/client";
 import { parseCreators } from "../api/types";
 import { useLibraryStore } from "../stores/libraryStore";
 import { useToastStore } from "../stores/toastStore";
+import { useResizableWidth } from "../hooks/useResizableWidth";
 
 export default function PreviewPanel() {
   const item = useLibraryStore((s) => s.items.find((i) => i.id === s.selectedId));
@@ -13,6 +14,7 @@ export default function PreviewPanel() {
   const [retrying, setRetrying] = useState(false);
   const [aiSummary, setAiSummary] = useState("");
   const [summarizing, setSummarizing] = useState(false);
+  const { width, handle } = useResizableWidth("pw-preview-width", 320);
 
   const retry = async () => {
     if (!item) return;
@@ -50,8 +52,10 @@ export default function PreviewPanel() {
   return (
     <aside
       aria-label="AI 预览面板"
-      className="w-80 shrink-0 bg-cream dark:bg-dcream border-l border-line dark:border-dline p-4 overflow-y-auto"
+      style={{ width }}
+      className="relative shrink-0 bg-cream dark:bg-dcream border-l border-line dark:border-dline p-4 overflow-y-auto"
     >
+      {handle}
       {!item ? (
         <p className="text-sm text-muted dark:text-dmuted">选中左侧条目查看详情</p>
       ) : (

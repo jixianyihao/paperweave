@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import multipart from "@fastify/multipart";
 import type Database from "better-sqlite3";
-import { openDb, resolveDataDir } from "./db.js";
+import { openDb, dataDir as envDataDir } from "./db.js";
 import { registerItemRoutes } from "./routes/items.js";
 import { registerCollectionRoutes } from "./routes/collections.js";
 import { registerTagRoutes } from "./routes/tags.js";
@@ -20,7 +20,7 @@ export interface ServerOptions {
 }
 
 export function buildServer(db: Database.Database = openDb(), opts: ServerOptions = {}) {
-  const dataDir = opts.dataDir ?? resolveDataDir();
+  const dataDir = opts.dataDir ?? envDataDir();
   const fetchImpl = opts.fetchImpl ?? fetch;
   const app = Fastify({ logger: false });
   void app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } });

@@ -42,12 +42,17 @@ fn main() {
     let sidecar: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
     let sidecar_exit = Arc::clone(&sidecar);
 
-    // Injected into every frame (the reader iframe builds relative "/api/..."
-    // URLs for PDF fetches, bypassing the frontend's apiFetch). apiFetch itself
-    // picks up window.__PAPERWEAVE_API_BASE__ via setApiBase; the fetch/XHR
-    // rewrite below is a catch-all for callers that don't go through apiFetch.
-    let init_script = format!(
-        r#"(() => {{
+    // Injected into every frame in PRODUCTION only (the reader iframe builds
+    // relative "/api/..." URLs for PDF fetches, bypassing the frontend's
+    // apiFetch). apiFetch itself picks up window.__PAPERWEAVE_API_BASE__ via
+    // setApiBase; the fetch/XHR rewrite below is a catch-all for callers that
+    // don't go through apiFetch. In dev the webview loads the vite dev server
+    // which proxies /api itself, and the probed port would point nowhere.
+    let init_script = if cfg!(dev) {
+        None
+    } else {
+        Some(format!(
+            r#"(() => {{
   const BASE = "http://127.0.0.1:{port}";
   window.__PAPERWEAVE_API_BASE__ = BASE;
   const rewrite = (u) => (typeof u === "string" && u.startsWith("/api/")) ? BASE + u : u;
@@ -63,8 +68,9 @@ fn main() {
     return origOpen.call(this, method, rewrite(url), ...rest);
   }};
 }})();"#,
-        port = port
-    );
+            port = port
+        ))
+    };
 
     let app = tauri::Builder::default()
         .setup(move |app| {
@@ -99,11 +105,13 @@ fn main() {
             } else {
                 tauri::WebviewUrl::App("index.html".into())
             };
-            tauri::WebviewWindowBuilder::new(app, "main", url)
+            let mut builder = tauri::WebviewWindowBuilder::new(app, "main", url)
                 .title("PaperWeave")
-                .inner_size(1440.0, 900.0)
-                .initialization_script_for_all_frames(&init_script)
-                .build()?;
+                .inner_size(1440.0, 900.0);
+            if let Some(script) = &init_script {
+                builder = builder.initialization_script_for_all_frames(script);
+            }
+            builder.build()?;
             Ok(())
         })
         .build(tauri::generate_context!())

@@ -96,8 +96,10 @@ for pkg in better-sqlite3 bindings file-uri-to-path; do
   src="$(node scripts/sea/resolve-pkg.cjs "$pkg")" || exit 1
   cp -RL "$src" "$RES_DIR/backend/node_modules/${pkg}"
 done
-# stage onnxruntime-node + sharp + @napi-rs/canvas（pdfjs Node polyfill）
-node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp @napi-rs/canvas
+# stage onnxruntime-node + sharp + @napi-rs/canvas（pdfjs polyfill）
+# + pdfjs-dist（SEA 下 worker 文件按文件路径加载）
+# + @napi-rs/canvas-darwin-arm64（canvas 的平台原生绑定）
+node scripts/sea/stage-deps.cjs "$RES_DIR/backend" onnxruntime-node sharp @napi-rs/canvas pdfjs-dist @napi-rs/canvas-darwin-arm64
 # bindings only needs its entry; drop prebuild noise
 rm -rf "$RES_DIR/backend/node_modules/better-sqlite3/obj" \
        "$RES_DIR/backend/node_modules/better-sqlite3/obj.target" \

@@ -13,7 +13,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app"],
     "externalBin": ["binaries/paperweave-backend"],
     "resources": {
       "resources/migrations": "migrations/",

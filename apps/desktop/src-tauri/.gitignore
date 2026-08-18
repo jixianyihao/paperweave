@@ -1,0 +1,3 @@
+# build artifacts from scripts/build-backend-sea.sh (regenerated per build)
+binaries/
+resources/

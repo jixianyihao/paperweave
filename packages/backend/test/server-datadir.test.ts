@@ -19,6 +19,7 @@ describe("buildServer default dataDir honors DATA_DIR env", () => {
     process.env.DATA_DIR = dir;
     const db = openDb(dir);
     db.prepare("INSERT INTO items (id, title, file_path) VALUES ('T1', 't', 'files/T1.pdf')").run();
+    writeFileSync(join(dir, "files", "T1.pdf"), "%PDF-dummy");
     const app = buildServer(db); // 不传 opts.dataDir —— 必须走 DATA_DIR
     const res = await app.inject({ method: "GET", url: "/api/items/T1/pdf" });
     expect(res.statusCode).toBe(200);

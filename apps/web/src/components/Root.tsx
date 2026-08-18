@@ -4,6 +4,7 @@ import CommandPalette from "./CommandPalette";
 import ImportDialog from "./ImportDialog";
 import MockBadge from "./MockBadge";
 import Toasts from "./Toasts";
+import VoiceOrb from "./voice/VoiceOrb";
 import { useGlobalImportDrop } from "../hooks/useGlobalImportDrop";
 import { useUiStore } from "../stores/uiStore";
 
@@ -34,6 +35,7 @@ export default function Root() {
       <ImportDialog />
       <Toasts />
       <MockBadge />
+      <VoiceOrb />
     </>
   );
 }

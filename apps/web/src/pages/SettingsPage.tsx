@@ -1,10 +1,12 @@
 import { Link, useParams } from "react-router-dom";
 import AiModelsSection from "../components/settings/AiModelsSection";
 import AppearanceSection from "../components/settings/AppearanceSection";
+import VoiceSection from "../components/settings/VoiceSection";
 
 const SECTIONS = [
   { key: "general", label: "通用" },
   { key: "ai", label: "AI 与模型" },
+  { key: "voice", label: "语音" },
   { key: "appearance", label: "外观" },
   { key: "storage", label: "存储" },
   { key: "shortcuts", label: "快捷键" },
@@ -45,6 +47,7 @@ export default function SettingsPage() {
       </nav>
       <main className="flex-1 overflow-y-auto p-6 max-w-3xl">
         {section === "ai" && <AiModelsSection />}
+        {section === "voice" && <VoiceSection />}
         {section === "appearance" && <AppearanceSection />}
         {(section === "general" || section === "storage" || section === "shortcuts") && (
           <p className="text-sm text-muted dark:text-dmuted">该分组将在后续阶段实现。</p>

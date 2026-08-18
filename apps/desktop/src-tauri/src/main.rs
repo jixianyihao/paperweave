@@ -15,6 +15,23 @@ fn probe_port(base: u16, attempts: u16) -> u16 {
     base
 }
 
+/// Locate the bundled backend resources (node_modules with native modules).
+/// `resource_dir()` can fail or resolve unexpectedly depending on how the app
+/// was launched, so probe the known bundle layouts for the actual content.
+fn resolve_backend_home(exe_dir: &std::path::Path, resource_dir: &std::path::Path) -> std::path::PathBuf {
+    let candidates = [
+        exe_dir.join("../Resources/backend"), // macOS .app bundle layout
+        resource_dir.join("backend"),         // Tauri resource_dir
+        exe_dir.join("backend"),              // dev / flat layout
+    ];
+    for c in &candidates {
+        if c.join("node_modules/better-sqlite3").exists() {
+            return c.clone();
+        }
+    }
+    resource_dir.join("backend")
+}
+
 /// Spawn the backend sidecar binary bundled via `bundle.externalBin`.
 /// Tauri places external binaries next to the app executable under their
 /// configured name (without the target-triple suffix).
@@ -29,7 +46,7 @@ fn spawn_sidecar(
     } else {
         "paperweave-backend"
     });
-    let backend_home = resource_dir.join("backend");
+    let backend_home = resolve_backend_home(exe_dir, resource_dir);
     Command::new(&bin)
         .env("PORT", port.to_string())
         .env("DATA_DIR", data_dir)

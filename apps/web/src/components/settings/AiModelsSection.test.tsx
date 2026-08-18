@@ -26,6 +26,54 @@ function rowOf(list: HTMLElement, label: string): HTMLElement {
   return li;
 }
 
+describe("服务商预设", () => {
+  test("点击 Kimi（Moonshot）预设：预填类型/显示名/Base URL/模型", async () => {
+    await renderSection();
+    const form = screen.getByLabelText("添加服务商");
+    fireEvent.click(within(form).getByRole("button", { name: /Kimi/ }));
+    expect((within(form).getByLabelText("类型") as HTMLSelectElement).value).toBe("custom");
+    expect((within(form).getByLabelText("显示名") as HTMLInputElement).value).toContain("Kimi");
+    expect((within(form).getByLabelText("Base URL") as HTMLInputElement).value).toBe("https://api.moonshot.cn/v1");
+    expect((within(form).getByLabelText("模型列表") as HTMLInputElement).value).toContain("kimi-k2-0711-preview");
+  });
+
+  test("Kimi 预设 + 粘贴 key 保存：服务商出现在列表并带 base_url 与模型", async () => {
+    const list = await renderSection();
+    const form = screen.getByLabelText("添加服务商");
+    fireEvent.click(within(form).getByRole("button", { name: /Kimi/ }));
+    fireEvent.change(within(form).getByLabelText("API Key"), { target: { value: "sk-kimi" } });
+    fireEvent.click(within(form).getByRole("button", { name: "添加服务商" }));
+    await waitFor(() => expect(within(list).getByText(/Kimi/)).toBeInTheDocument());
+    const row = rowOf(list, "Kimi (Moonshot)");
+    expect(within(row).getByText(/api\.moonshot\.cn\/v1/)).toBeInTheDocument();
+    expect(within(row).getByText(/已配置密钥/)).toBeInTheDocument();
+    expect(within(row).getByText(/kimi-k2-0711-preview/)).toBeInTheDocument();
+    expect(useToastStore.getState().toasts.some((t) => t.kind === "success")).toBe(true);
+  });
+
+  test("DeepSeek 预设：custom 类型，预填 deepseek 端点与模型", async () => {
+    await renderSection();
+    const form = screen.getByLabelText("添加服务商");
+    fireEvent.click(within(form).getByRole("button", { name: "DeepSeek" }));
+    expect((within(form).getByLabelText("类型") as HTMLSelectElement).value).toBe("custom");
+    expect((within(form).getByLabelText("Base URL") as HTMLInputElement).value).toBe("https://api.deepseek.com/v1");
+    expect((within(form).getByLabelText("模型列表") as HTMLInputElement).value).toContain("deepseek-chat");
+  });
+
+  test("OpenAI 预设：openai 类型，预填官方端点与 gpt-4o-mini", async () => {
+    const list = await renderSection();
+    const form = screen.getByLabelText("添加服务商");
+    fireEvent.click(within(form).getByRole("button", { name: "OpenAI" }));
+    expect((within(form).getByLabelText("类型") as HTMLSelectElement).value).toBe("openai");
+    expect((within(form).getByLabelText("Base URL") as HTMLInputElement).value).toBe("https://api.openai.com/v1");
+    expect((within(form).getByLabelText("模型列表") as HTMLInputElement).value).toContain("gpt-4o-mini");
+    fireEvent.change(within(form).getByLabelText("API Key"), { target: { value: "sk-openai" } });
+    fireEvent.click(within(form).getByRole("button", { name: "添加服务商" }));
+    await waitFor(() => expect(within(list).getByText(/api\.openai\.com\/v1/)).toBeInTheDocument());
+    expect(within(list).getByText(/gpt-4o-mini/)).toBeInTheDocument();
+  });
+});
+
 describe("AiModelsSection 交互", () => {
   test("添加表单校验：无显示名禁提交；custom 无 base_url 禁提交", async () => {
     await renderSection();

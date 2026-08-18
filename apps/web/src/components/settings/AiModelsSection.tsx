@@ -28,6 +28,13 @@ const KIND_LABEL: Record<ProviderKind, string> = {
   custom: "自定义",
 };
 
+/** 常见 OpenAI 兼容服务商预设：一键预填 base_url/label/模型，用户只需粘贴 key */
+const PROVIDER_PRESETS: { name: string; kind: ProviderKind; label: string; baseUrl: string; models: string }[] = [
+  { name: "Kimi (Moonshot)", kind: "custom", label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", models: "kimi-k2-0711-preview" },
+  { name: "DeepSeek", kind: "custom", label: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", models: "deepseek-chat" },
+  { name: "OpenAI", kind: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1", models: "gpt-4o-mini" },
+];
+
 function ProviderForm({ onCreated }: { onCreated: () => void }) {
   const push = useToastStore((s) => s.push);
   const [kind, setKind] = useState<ProviderKind>("openai");
@@ -76,6 +83,24 @@ function ProviderForm({ onCreated }: { onCreated: () => void }) {
         void submit();
       }}
     >
+      <div aria-label="服务商预设" className="flex items-center gap-2 text-xs text-muted dark:text-dmuted">
+        <span className="shrink-0">常用预设：</span>
+        {PROVIDER_PRESETS.map((p) => (
+          <button
+            key={p.name}
+            type="button"
+            onClick={() => {
+              setKind(p.kind);
+              setLabel(p.label);
+              setBaseUrl(p.baseUrl);
+              setModels(p.models);
+            }}
+            className="px-2 py-1 rounded border border-line dark:border-dline hover:bg-hoverbg dark:hover:bg-dhover"
+          >
+            {p.name}
+          </button>
+        ))}
+      </div>
       <div className="flex gap-2">
         <select
           aria-label="类型"

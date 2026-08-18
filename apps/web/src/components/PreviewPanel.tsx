@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { refetchMetadata } from "../api/endpoints";
-import { ApiError } from "../api/client";
+import { Link } from "react-router-dom";
+import { refetchMetadata, aiSummarize } from "../api/endpoints";
+import { ApiError, type SseFrame } from "../api/client";
 import { parseCreators } from "../api/types";
 import { useLibraryStore } from "../stores/libraryStore";
 import { useToastStore } from "../stores/toastStore";
@@ -10,6 +11,8 @@ export default function PreviewPanel() {
   const upsertItem = useLibraryStore((s) => s.upsertItem);
   const pushToast = useToastStore((s) => s.push);
   const [retrying, setRetrying] = useState(false);
+  const [aiSummary, setAiSummary] = useState("");
+  const [summarizing, setSummarizing] = useState(false);
 
   const retry = async () => {
     if (!item) return;
@@ -25,6 +28,25 @@ export default function PreviewPanel() {
     }
   };
 
+  const genSummary = async () => {
+    if (!item) return;
+    const text = item.abstract ?? item.title;
+    setAiSummary("");
+    setSummarizing(true);
+    try {
+      await aiSummarize(
+        { text, itemId: item.id, level: "bullets" },
+        (frame: SseFrame) => {
+          if (typeof frame.delta === "string") setAiSummary((s) => s + frame.delta);
+        },
+      );
+    } catch (e) {
+      pushToast(e instanceof ApiError ? e.message : "AI 摘要生成失败（未配置模型？）", "error");
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
   return (
     <aside
       aria-label="AI 预览面板"
@@ -35,6 +57,12 @@ export default function PreviewPanel() {
       ) : (
         <div className="flex flex-col gap-3">
           <h2 className="text-base font-bold leading-snug">{item.title}</h2>
+          <Link
+            to={`/read/${item.id}`}
+            className="block rounded bg-navy dark:bg-dnavy px-3 py-2 text-center text-sm text-paper dark:text-dpaper hover:opacity-90"
+          >
+            打开阅读 →
+          </Link>
           <dl className="text-sm flex flex-col gap-1">
             <div>
               <dt className="inline text-muted dark:text-dmuted">作者：</dt>
@@ -51,13 +79,21 @@ export default function PreviewPanel() {
             {item.doi && (
               <div>
                 <dt className="inline text-muted dark:text-dmuted">DOI：</dt>
-                <dd className="inline break-all">{item.doi}</dd>
+                <dd className="inline break-all">
+                  <a className="text-navy dark:text-dnavy hover:underline" target="_blank" rel="noreferrer" href={`https://doi.org/${item.doi}`}>
+                    {item.doi}
+                  </a>
+                </dd>
               </div>
             )}
             {item.arxiv_id && (
               <div>
                 <dt className="inline text-muted dark:text-dmuted">arXiv：</dt>
-                <dd className="inline">{item.arxiv_id}</dd>
+                <dd className="inline">
+                  <a className="text-navy dark:text-dnavy hover:underline" target="_blank" rel="noreferrer" href={`https://arxiv.org/abs/${item.arxiv_id}`}>
+                    {item.arxiv_id}
+                  </a>
+                </dd>
               </div>
             )}
             <div>
@@ -87,7 +123,19 @@ export default function PreviewPanel() {
 
           <section aria-label="AI 摘要" className="rounded border border-dashed border-line dark:border-dline p-2">
             <h3 className="text-xs uppercase tracking-wide text-muted dark:text-dmuted mb-1">AI 摘要</h3>
-            <p className="text-xs text-muted dark:text-dmuted">AI 摘要将在阶段 4 上线，届时可在此一键生成。</p>
+            {aiSummary ? (
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{aiSummary}{summarizing && <span className="animate-pulse">▍</span>}</p>
+            ) : (
+              <p className="text-xs text-muted dark:text-dmuted mb-1">基于摘要生成要点速览。</p>
+            )}
+            <button
+              type="button"
+              disabled={summarizing}
+              onClick={() => void genSummary()}
+              className="mt-1 text-xs px-2 py-1 rounded bg-navy text-paper dark:bg-dnavy dark:text-dpaper disabled:opacity-50"
+            >
+              {summarizing ? "生成中…" : aiSummary ? "重新生成" : "生成 AI 摘要"}
+            </button>
           </section>
         </div>
       )}

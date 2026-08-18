@@ -11,6 +11,7 @@ import { registerAnnotationRoutes } from "./routes/annotations.js";
 import { registerProviderRoutes } from "./routes/providers.js";
 import { registerAiRoutes } from "./routes/ai.js";
 import { registerAskRoutes } from "./routes/ask.js";
+import { registerVoiceRoutes } from "./routes/voice.js";
 import type { FetchLike } from "./lib/metadata.js";
 
 export interface ServerOptions {
@@ -33,5 +34,6 @@ export function buildServer(db: Database.Database = openDb(), opts: ServerOption
   registerProviderRoutes(app, db, { fetchImpl });
   registerAiRoutes(app, db, { fetchImpl });
   registerAskRoutes(app, db, { dataDir, fetchImpl });
+  registerVoiceRoutes(app, db, { fetchImpl });
   return app;
 }

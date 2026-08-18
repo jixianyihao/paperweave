@@ -186,3 +186,27 @@ export function askItem(
 ): Promise<void> {
   return apiSse(`/api/items/${encodeURIComponent(itemId)}/ask`, { question }, onFrame, opts);
 }
+
+// ---- 语音模式（阶段 5.5+6，流 V）----
+
+export interface VoiceSessionInfo {
+  client_secret: string;
+  url: string;
+  model: string;
+}
+
+export interface VoiceSessionContextInput {
+  itemId?: string;
+  page?: number | null;
+  selectedText?: string;
+}
+
+/** 后端代理协商 realtime 会话，返回 ephemeral token（BYOK key 不出后端） */
+export function createVoiceSession(input: VoiceSessionContextInput = {}): Promise<VoiceSessionInfo> {
+  return apiFetch<VoiceSessionInfo>("/api/voice/session", jsonInit("POST", input));
+}
+
+/** 会话时长上报（写入 usage_log task=voice） */
+export function reportVoiceUsage(seconds: number): Promise<{ ok: boolean }> {
+  return apiFetch<{ ok: boolean }>("/api/voice/usage", jsonInit("POST", { seconds }));
+}

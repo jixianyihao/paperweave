@@ -421,6 +421,19 @@ export async function mockApiFetch<T>(path: string, init?: RequestInit): Promise
     return usage as T;
   }
 
+  // ---- voice（阶段 5.5+6：ephemeral token 协商 + 时长上报）----
+  if (method === "POST" && p === "/api/voice/session") {
+    return {
+      client_secret: "mock-ephemeral-key",
+      url: "https://mock.realtime.local/v1/realtime",
+      model: "gpt-4o-realtime-preview",
+    } as T;
+  }
+  if (method === "POST" && p === "/api/voice/usage") {
+    if (typeof body.seconds !== "number" || body.seconds <= 0) throw new MockApiError(400, "invalid request");
+    return { ok: true } as T;
+  }
+
   // ---- annotations（阶段 4+5：阅读器时间流）----
   const annMatch = p.match(/^\/api\/items\/([^/]+)\/annotations$/);
   if (annMatch && method === "GET") {

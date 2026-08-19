@@ -215,6 +215,121 @@ describe("ReaderPage 桥接与浮动菜单", () => {
   });
 });
 
+describe("ReaderPage 阅读器标注同步", () => {
+  const READER_HL = {
+    id: "r1",
+    type: "highlight",
+    text: "attention is all you need",
+    comment: "",
+    color: "#ffd400",
+    page: 2,
+    pageLabel: "2",
+    position: { pageIndex: 1, rects: [[1, 2, 3, 4]] },
+  };
+
+  function stubBackend(opts?: { existing?: Record<string, unknown>[] }) {
+    const posts: { body: Record<string, unknown> }[] = [];
+    let stored: Record<string, unknown>[] = [...(opts?.existing ?? [])];
+    let getCount = 0;
+    const json = (v: unknown, status = 200) =>
+      new Response(JSON.stringify(v), { status, headers: { "Content-Type": "application/json" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url === "/api/items/attn0001") return json(ITEM_JSON);
+        if (url === "/api/items/attn0001/annotations") {
+          if (init?.method === "POST") {
+            const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+            posts.push({ body });
+            const ann = {
+              id: `ann${posts.length}`,
+              item_id: "attn0001",
+              sort_index: posts.length,
+              created_at: "2026-08-19 00:00:00",
+              ...body,
+            };
+            stored = [...stored, ann];
+            return json(ann, 201);
+          }
+          getCount += 1;
+          return json(stored);
+        }
+        return new Response("not found", { status: 404 });
+      }),
+    );
+    return { posts, getCount: () => getCount };
+  }
+
+  test("reader 高亮 → POST 落库并重拉时间流", async () => {
+    disableMockMode();
+    const { posts, getCount } = stubBackend();
+    renderReader("attn0001");
+    await waitFor(() => expect(lastMockBridge()).toBeTruthy());
+    const before = getCount();
+    act(() => lastMockBridge()!.emitAnnotationsChanged([READER_HL]));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({
+      type: "highlight",
+      content: "attention is all you need",
+      page: 2,
+      position: JSON.stringify(READER_HL.position),
+      color: "#ffd400",
+    });
+    // 重拉成功：时间流出现该标注
+    await waitFor(() => expect(screen.getByText("attention is all you need")).toBeInTheDocument());
+    expect(getCount()).toBeGreaterThan(before);
+  });
+
+  test("重复推送与空批注不重复落库；批注补内容后按 note 落库", async () => {
+    disableMockMode();
+    const { posts } = stubBackend();
+    renderReader("attn0001");
+    await waitFor(() => expect(lastMockBridge()).toBeTruthy());
+    act(() => lastMockBridge()!.emitAnnotationsChanged([READER_HL]));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    // reader 去抖后重发同一标注（新对象身份）→ 去重
+    act(() => lastMockBridge()!.emitAnnotationsChanged([{ ...READER_HL }]));
+    // 刚创建的空批注（后端 content min(1)，暂不落库）
+    const emptyNote = {
+      id: "n1", type: "note", text: "", comment: "", color: null,
+      page: 2, pageLabel: "2", position: READER_HL.position,
+    };
+    act(() => lastMockBridge()!.emitAnnotationsChanged([emptyNote]));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(posts).toHaveLength(1);
+    // 用户输入批注后 reader 重发 → 落库为 note
+    act(() => lastMockBridge()!.emitAnnotationsChanged([{ ...emptyNote, comment: "边注" }]));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1].body).toMatchObject({ type: "note", content: "边注", page: 2 });
+  });
+
+  test("与后端既有标注同键（type+page+position）的不重复落库", async () => {
+    disableMockMode();
+    const { posts } = stubBackend({
+      existing: [
+        {
+          id: "ann-existing",
+          item_id: "attn0001",
+          type: "highlight",
+          page: 2,
+          position: JSON.stringify(READER_HL.position),
+          content: "attention is all you need",
+          color: "#ffd400",
+          created_at: "2026-08-18 00:00:00",
+          sort_index: 0,
+        },
+      ],
+    });
+    renderReader("attn0001");
+    // 等既有标注加载渲染完再模拟 reader 推送
+    await waitFor(() => expect(screen.getByText("attention is all you need")).toBeInTheDocument());
+    act(() => lastMockBridge()!.emitAnnotationsChanged([READER_HL]));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(posts).toHaveLength(0);
+  });
+});
+
 describe("ReaderPage 全文问答", () => {
   test("底部提问 → 流式回答 + 引用锚点点击调 jumpTo", async () => {
     renderReader("attn0001");

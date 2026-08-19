@@ -14,7 +14,7 @@ import {
   listAnnotations,
 } from "./api/endpoints";
 import type { Annotation, Citation, ExplainLevel, Item } from "./api/types";
-import { attachReaderBridge, type ReaderSelection } from "./reader/bridge";
+import { attachReaderBridge, type ReaderAnnotation, type ReaderSelection } from "./reader/bridge";
 import { ReaderBridgeContext, type ReaderBridgeApi } from "./reader/bridgeContext";
 import { useResizableWidth } from "./hooks/useResizableWidth";
 import { useToastStore } from "./stores/toastStore";
@@ -53,6 +53,27 @@ function annToEntry(a: Annotation): TimelineEntry {
 function nowStamp(): string {
   // 与服务端 "YYYY-MM-DD HH:MM:SS" 同格式（UTC 近似即可，仅用于排序 tiebreak）
   return new Date().toISOString().replace("T", " ").slice(0, 19);
+}
+
+// 阅读器原生类型 → 后端类型。后端无 underline，归入 highlight（内容同为选中原文）；
+// ink/image/text 无对应类型且无可落库文本，不同步。
+const READER_TYPE_MAP: Record<string, "highlight" | "note"> = {
+  highlight: "highlight",
+  underline: "highlight",
+  note: "note",
+};
+
+/** 去重键：type+page+position（后端 position 即 reader position 的 JSON 串） */
+function syncKey(type: string, page: number | null, positionStr: string | null): string {
+  return `${type}|${page ?? ""}|${positionStr ?? "null"}`;
+}
+
+function backendKey(a: Annotation): string {
+  return syncKey(a.type, a.page, a.position);
+}
+
+function readerKey(mapped: "highlight" | "note", a: ReaderAnnotation): string {
+  return syncKey(mapped, a.page, JSON.stringify(a.position ?? null));
 }
 
 export default function ReaderPage() {
@@ -112,6 +133,74 @@ export default function ReaderPage() {
 
   const readyItem = state.phase === "ready" ? state.item : null;
 
+  /** 重拉标注列表；返回是否成功（失败时调用方须保留本地条目） */
+  const refetchAnnotations = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      setAnnotations(await listAnnotations(id));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // 最新标注列表的 ref：桥回调在 attach 时注册，靠它避免读到过期闭包
+  const annotationsRef = useRef<Annotation[]>([]);
+  useEffect(() => {
+    annotationsRef.current = annotations;
+  }, [annotations]);
+
+  /** 已同步/同步中的阅读器标注键：reader 对同一标注会重复推送（编辑、去抖重发），防重复落库 */
+  const syncedReaderKeysRef = useRef<Set<string>>(new Set());
+
+  /** 阅读器内创建的标注（reader 工具栏高亮/笔记）→ 落库并刷新时间流（单向 reader → host） */
+  const handleReaderAnnotations = useCallback(
+    (readerAnns: ReaderAnnotation[]) => {
+      if (!readyItem) return;
+      const itemId = readyItem.id;
+      const existing = new Set(annotationsRef.current.map(backendKey));
+      const toCreate: { key: string; input: Parameters<typeof createAnnotation>[1] }[] = [];
+      for (const a of readerAnns) {
+        const mapped = READER_TYPE_MAP[a.type];
+        if (!mapped) continue;
+        // 高亮内容为选中原文；笔记内容为用户批注（创建瞬间批注为空则暂跳过，编辑后会重发）
+        const content = mapped === "note" ? a.comment || a.text : a.text || a.comment;
+        if (!content) continue;
+        const key = readerKey(mapped, a);
+        if (existing.has(key) || syncedReaderKeysRef.current.has(key)) continue;
+        syncedReaderKeysRef.current.add(key);
+        toCreate.push({
+          key,
+          input: {
+            type: mapped,
+            content,
+            page: a.page,
+            position: JSON.stringify(a.position ?? null),
+            color: a.color,
+          },
+        });
+      }
+      if (!toCreate.length) return;
+      void (async () => {
+        let created = 0;
+        let failed = 0;
+        for (const { key, input } of toCreate) {
+          try {
+            await createAnnotation(itemId, input);
+            created += 1;
+          } catch {
+            failed += 1;
+            syncedReaderKeysRef.current.delete(key); // 允许后续重试
+          }
+        }
+        const ok = await refetchAnnotations(itemId);
+        if (failed > 0 || (created > 0 && !ok)) {
+          pushToast("阅读器标注同步失败，时间流可能不完整", "error");
+        }
+      })();
+    },
+    [readyItem, refetchAnnotations, pushToast],
+  );
+
   // 加载时间流标注
   useEffect(() => {
     if (!readyItem) return;
@@ -148,6 +237,7 @@ export default function ReaderPage() {
         setSelection({ sel, pos });
       },
       onSelectionCleared: () => setSelection(null),
+      onAnnotationsChanged: (readerAnns) => handleReaderAnnotations(readerAnns),
     });
     bridgeRef.current = handle;
     setBridgeApi({ jumpTo: (t) => handle.jumpTo(t) });
@@ -157,7 +247,7 @@ export default function ReaderPage() {
       setBridgeApi(null);
       setSelection(null);
     };
-  }, [readyItem?.file_path, readyItem?.id]);
+  }, [readyItem?.file_path, readyItem?.id, handleReaderAnnotations]);
 
   const dismissMenu = useCallback(() => {
     setSelection(null);
@@ -166,16 +256,6 @@ export default function ReaderPage() {
 
   const patchLocal = useCallback((id: string, f: (e: TimelineEntry) => TimelineEntry) => {
     setLocalEntries((es) => es.map((e) => (e.id === id ? f(e) : e)));
-  }, []);
-
-  /** 重拉标注列表；返回是否成功（失败时调用方须保留本地条目） */
-  const refetchAnnotations = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      setAnnotations(await listAnnotations(id));
-      return true;
-    } catch {
-      return false;
-    }
   }, []);
 
   /** 摘要/解释/翻译共用：本地 pending 条目流式填充；done 后重拉成功才撤本地条目，失败保留并轻提示 */

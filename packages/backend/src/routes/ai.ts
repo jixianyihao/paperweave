@@ -5,7 +5,7 @@ import { newKey } from "../lib/keys.js";
 import { startSse } from "../lib/sse.js";
 import { streamTask, type AiTask } from "../lib/llm/router.js";
 import {
-  summarizeMessages, explainMessages, translateMessages,
+  summarizeMessages, explainMessages, translateMessages, imageExplainMessages,
   type PaperContext,
 } from "../lib/llm/prompts.js";
 import type { ChatMessage } from "../lib/llm/common.js";
@@ -24,6 +24,12 @@ const baseFields = {
 
 const summarizeSchema = z.object({ ...baseFields, level: z.enum(["brief", "bullets"]).optional() }).strict();
 const explainSchema = z.object({ ...baseFields, level: z.enum(["eli5", "undergrad", "grad", "expert"]).optional() }).strict();
+const imageSchema = z.object({
+  image: z.string().startsWith("data:image/"),
+  level: z.enum(["eli5", "undergrad", "grad", "expert"]).optional(),
+  itemId: z.string().min(1).optional(),
+  page: z.number().int().nullable().optional(),
+}).strict();
 const translateSchema = z.object({ ...baseFields, targetLang: z.enum(["zh", "en"]).optional() }).strict();
 
 const ANNOTATION_TYPE = {
@@ -93,6 +99,15 @@ export function registerAiRoutes(app: FastifyInstance, db: Database.Database, de
     if (item === undefined) return reply.code(400).send({ error: "item not found" });
     const messages = explainMessages(parsed.data.text, parsed.data.level ?? "undergrad", ctxOf(item));
     await run(reply, parsed.data, "explain", messages, item);
+  });
+
+  app.post("/api/ai/explain-image", async (req, reply) => {
+    const parsed = imageSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid request", details: parsed.error.issues });
+    const item = loadItem(parsed.data.itemId);
+    if (item === undefined) return reply.code(400).send({ error: "item not found" });
+    const messages = imageExplainMessages(parsed.data.image, parsed.data.level ?? "grad", ctxOf(item));
+    await run(reply, { text: "", itemId: parsed.data.itemId, page: parsed.data.page }, "explain", messages, item);
   });
 
   app.post("/api/ai/translate", async (req, reply) => {

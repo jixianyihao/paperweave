@@ -48,6 +48,20 @@ export function translateMessages(text: string, targetLang: TargetLang, ctx?: Pa
   ];
 }
 
+/** 截图（图/表/公式）解释：多模态消息，图片以 data URL 传入 */
+export function imageExplainMessages(imageDataUrl: string, level: ExplainLevel, ctx?: PaperContext): ChatMessage[] {
+  return [
+    { role: "system", content: `You are an expert academic reading assistant. The user captured a figure, table, or formula region from an academic paper. Explain what the image shows to ${EXPLAIN_AUDIENCE[level]}. If it is a chart, read axes/units/trends; if a table, summarize its structure and key values; if a formula, explain each symbol and the overall meaning. Stay faithful to the image.` },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: `Please explain this captured region.${contextBlock(ctx)}` },
+        { type: "image_url", image_url: { url: imageDataUrl } },
+      ],
+    },
+  ];
+}
+
 export function qaMessages(
   annotationContent: string,
   history: { role: "user" | "assistant"; content: string }[],

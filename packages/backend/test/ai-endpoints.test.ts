@@ -188,6 +188,39 @@ describe("POST /api/ai/summarize|explain|translate", () => {
     s.db.close();
   });
 
+  it("explain-image builds a multimodal message and stores ai_explain", async () => {
+    process.env.PAPERWEAVE_BUILTIN_KEY = "bk";
+    process.env.PAPERWEAVE_BUILTIN_BASE = "https://builtin.example/v1";
+    const capture: { url?: string; init?: RequestInit } = {};
+    const s = await setup(fakeLlmFetch(sseBody(["图中是模型架构"], { in: 5, out: 6 }), capture));
+    dir = s.dir;
+    const res = await s.app.inject({
+      method: "POST",
+      url: "/api/ai/explain-image",
+      payload: { image: "data:image/png;base64,iVBORw0KGgo=", level: "grad", itemId: "itm00001", page: 4 },
+    });
+    expect(res.statusCode).toBe(200);
+    const sent = JSON.parse(String(capture.init?.body));
+    const userContent = sent.messages[1].content;
+    expect(Array.isArray(userContent)).toBe(true);
+    expect(userContent[0].type).toBe("text");
+    expect(userContent[1]).toEqual({ type: "image_url", image_url: { url: "data:image/png;base64,iVBORw0KGgo=" } });
+    expect(String(sent.messages[0].content)).toMatch(/figure, table, or formula/);
+    const ann = s.db.prepare("SELECT type, content, page FROM annotations WHERE item_id = 'itm00001'").get() as { type: string; content: string; page: number };
+    expect(ann).toEqual({ type: "ai_explain", content: "图中是模型架构", page: 4 });
+    await s.app.close();
+    s.db.close();
+  });
+
+  it("explain-image 400s on non-image data or missing image", async () => {
+    const s = await setup();
+    dir = s.dir;
+    expect((await s.app.inject({ method: "POST", url: "/api/ai/explain-image", payload: {} })).statusCode).toBe(400);
+    expect((await s.app.inject({ method: "POST", url: "/api/ai/explain-image", payload: { image: "https://x.com/a.png" } })).statusCode).toBe(400);
+    await s.app.close();
+    s.db.close();
+  });
+
   it("400s on invalid body, unknown fields, bad level, unknown itemId", async () => {
     const s = await setup();
     dir = s.dir;

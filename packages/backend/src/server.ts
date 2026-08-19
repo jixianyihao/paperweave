@@ -22,7 +22,7 @@ export interface ServerOptions {
 export function buildServer(db: Database.Database = openDb(), opts: ServerOptions = {}) {
   const dataDir = opts.dataDir ?? envDataDir();
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, bodyLimit: 16 * 1024 * 1024 });
   void app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } });
   app.get("/api/health", async () => ({ status: "ok", version: "0.1.0" }));
   registerItemRoutes(app, db, { dataDir, fetchImpl });

@@ -1,4 +1,4 @@
-import { readSse, httpError, type ChatMessage, type LlmUsage, type DeltaHandler, type FetchLike } from "./common.js";
+import { readSse, httpError, type ChatMessage, type ContentPart, type LlmUsage, type DeltaHandler, type FetchLike } from "./common.js";
 
 export interface AnthropicChatOptions {
   baseUrl: string;
@@ -14,11 +14,26 @@ function endpoint(baseUrl: string): string {
   return `${baseUrl.replace(/\/+$/, "")}/v1/messages`;
 }
 
-function splitSystem(messages: ChatMessage[]): { system?: string; rest: { role: "user" | "assistant"; content: string }[] } {
+type AnthropicBlock =
+  | { type: "text"; text: string }
+  | { type: "image"; source: { type: "base64"; media_type: string; data: string } };
+
+// OpenAI 形态 content part → Anthropic block（image_url data URL → base64 source）
+function toAnthropicContent(content: string | ContentPart[]): string | AnthropicBlock[] {
+  if (typeof content === "string") return content;
+  return content.map((p): AnthropicBlock => {
+    if (p.type === "text") return { type: "text", text: p.text };
+    const match = p.image_url.url.match(/^data:(image\/[a-z+]+);base64,(.+)$/i);
+    if (!match) return { type: "text", text: "[图片格式不支持]" };
+    return { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } };
+  });
+}
+
+function splitSystem(messages: ChatMessage[]): { system?: string; rest: { role: "user" | "assistant"; content: string | AnthropicBlock[] }[] } {
   const system = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n") || undefined;
   const rest = messages
     .filter((m): m is ChatMessage & { role: "user" | "assistant" } => m.role !== "system")
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({ role: m.role, content: toAnthropicContent(m.content) }));
   return { system, rest };
 }
 

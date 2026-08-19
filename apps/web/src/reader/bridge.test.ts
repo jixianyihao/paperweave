@@ -32,8 +32,20 @@ function makeHandlers() {
     onReady: vi.fn(),
     onSelection: vi.fn(),
     onSelectionCleared: vi.fn(),
+    onAnnotationsChanged: vi.fn(),
   };
 }
+
+const validReaderAnnotation = {
+  id: "abc123",
+  type: "highlight",
+  text: "highlighted text",
+  comment: "",
+  color: "#ffd400",
+  page: 2,
+  pageLabel: "2",
+  position: { pageIndex: 1, rects: [[1, 2, 3, 4]] },
+};
 
 describe("attachReaderBridge", () => {
   let iframe: HTMLIFrameElement;
@@ -106,6 +118,71 @@ describe("attachReaderBridge", () => {
     expect(handlers.onReady).not.toHaveBeenCalled();
     expect(handlers.onSelection).not.toHaveBeenCalled();
     expect(handlers.onSelectionCleared).not.toHaveBeenCalled();
+    bridge.dispose();
+  });
+
+  it("parses annotationsChanged and passes annotations + deletedIds through", () => {
+    const handlers = makeHandlers();
+    const bridge = attachReaderBridge(iframe, handlers);
+    postFromIframe(iframe, {
+      source: "pw-reader",
+      type: "annotationsChanged",
+      payload: { annotations: [validReaderAnnotation] },
+    });
+    expect(handlers.onAnnotationsChanged).toHaveBeenCalledTimes(1);
+    const [annotations, deletedIds] = handlers.onAnnotationsChanged.mock.calls[0] as [
+      unknown[],
+      string[],
+    ];
+    expect(annotations).toEqual([validReaderAnnotation]);
+    expect(deletedIds).toEqual([]);
+    bridge.dispose();
+  });
+
+  it("defaults missing optional fields and forwards delete-only changes", () => {
+    const handlers = makeHandlers();
+    const bridge = attachReaderBridge(iframe, handlers);
+    postFromIframe(iframe, {
+      source: "pw-reader",
+      type: "annotationsChanged",
+      payload: { annotations: [], deletedIds: ["gone1", 42, "gone2"] },
+    });
+    expect(handlers.onAnnotationsChanged).toHaveBeenCalledWith([], ["gone1", "gone2"]);
+    handlers.onAnnotationsChanged.mockClear();
+    postFromIframe(iframe, {
+      source: "pw-reader",
+      type: "annotationsChanged",
+      payload: { annotations: [{ id: "n1", type: "note" }] },
+    });
+    expect(handlers.onAnnotationsChanged).toHaveBeenCalledWith(
+      [
+        {
+          id: "n1",
+          type: "note",
+          text: "",
+          comment: "",
+          color: null,
+          page: null,
+          pageLabel: null,
+          position: null,
+        },
+      ],
+      [],
+    );
+    bridge.dispose();
+  });
+
+  it.each([
+    ["missing payload", undefined],
+    ["non-object payload", "nope"],
+    ["annotations not an array", { annotations: {} }],
+    ["empty change", { annotations: [] }],
+    ["all entries malformed", { annotations: [{ type: "highlight" }, { id: 7, type: "note" }] }],
+  ])("ignores malformed annotationsChanged: %s", (_label, payload) => {
+    const handlers = makeHandlers();
+    const bridge = attachReaderBridge(iframe, handlers);
+    postFromIframe(iframe, { source: "pw-reader", type: "annotationsChanged", payload });
+    expect(handlers.onAnnotationsChanged).not.toHaveBeenCalled();
     bridge.dispose();
   });
 
@@ -225,6 +302,7 @@ describe("reader-bootstrap (iframe side)", () => {
     _lastView: { clearSelection: ReturnType<typeof vi.fn> };
     navigate: ReturnType<typeof vi.fn>;
   };
+  let readerOptions: Record<string, unknown>;
   let originalParent: PropertyDescriptor | undefined;
 
   const selectionPosts = () =>
@@ -256,10 +334,11 @@ describe("reader-bootstrap (iframe side)", () => {
       navigate: vi.fn(),
     };
     // Mirrors upstream createReader: refuses to run twice.
-    (window as unknown as Record<string, unknown>).createReader = vi.fn(() => {
+    (window as unknown as Record<string, unknown>).createReader = vi.fn((opts) => {
       if ((window as unknown as Record<string, unknown>)._reader) {
         throw new Error("Reader is already initialized");
       }
+      readerOptions = opts as Record<string, unknown>;
       (window as unknown as Record<string, unknown>)._reader = fakeReader;
       return fakeReader;
     });
@@ -361,5 +440,83 @@ describe("reader-bootstrap (iframe side)", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(onUnhandled).not.toHaveBeenCalled();
     window.removeEventListener("unhandledrejection", onUnhandled);
+  });
+
+  const annotationPosts = () =>
+    parentPost.mock.calls.map((c) => c[0]).filter((m) => m.type === "annotationsChanged");
+
+  it("onSaveAnnotations posts normalized annotationsChanged to the host", () => {
+    boot();
+    const onSave = readerOptions.onSaveAnnotations as (a: unknown[]) => void;
+    onSave([
+      {
+        id: "r1",
+        type: "highlight",
+        text: "deep learning",
+        comment: "important",
+        color: "#ffd400",
+        pageLabel: "12",
+        position: { pageIndex: 11, rects: [[10, 20, 30, 40]] },
+        // reader-internal fields must not leak into the payload
+        sortIndex: "00001",
+        dateModified: "2026-08-19T00:00:00Z",
+      },
+    ]);
+    expect(annotationPosts()).toEqual([
+      {
+        source: "pw-reader",
+        type: "annotationsChanged",
+        payload: {
+          annotations: [
+            {
+              id: "r1",
+              type: "highlight",
+              text: "deep learning",
+              comment: "important",
+              color: "#ffd400",
+              page: 12,
+              pageLabel: "12",
+              position: { pageIndex: 11, rects: [[10, 20, 30, 40]] },
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("onSaveAnnotations tolerates missing fields and skips unusable entries", () => {
+    boot();
+    const onSave = readerOptions.onSaveAnnotations as (a: unknown[]) => void;
+    // A page-level note without a position: page is null, optional fields default.
+    onSave([{ id: "n1", type: "note", comment: "margin thought" }]);
+    expect(annotationPosts()[0].payload.annotations).toEqual([
+      {
+        id: "n1",
+        type: "note",
+        text: "",
+        comment: "margin thought",
+        color: null,
+        page: null,
+        pageLabel: null,
+        position: null,
+      },
+    ]);
+    // Entries without a string id/type are dropped; if none survive, nothing posts.
+    parentPost.mockClear();
+    onSave([{ type: "highlight" }, null, "junk"]);
+    expect(annotationPosts()).toEqual([]);
+  });
+
+  it("onDeleteAnnotations posts deletedIds to the host", () => {
+    boot();
+    const onDelete = readerOptions.onDeleteAnnotations as (ids: unknown[]) => void;
+    onDelete(["r1", 42, "r2"]);
+    expect(annotationPosts()).toEqual([
+      {
+        source: "pw-reader",
+        type: "annotationsChanged",
+        payload: { annotations: [], deletedIds: ["r1", "r2"] },
+      },
+    ]);
   });
 });

@@ -9,10 +9,22 @@ export interface ReaderSelection {
   position: unknown;
 }
 
+export interface ReaderAnnotation {
+  id: string;
+  type: string;
+  text: string;
+  comment: string;
+  color: string | null;
+  page: number | null;
+  pageLabel: string | null;
+  position: unknown;
+}
+
 export interface BridgeHandlers {
   onReady(): void;
   onSelection(sel: ReaderSelection): void;
   onSelectionCleared(): void;
+  onAnnotationsChanged(annotations: ReaderAnnotation[], deletedIds: string[]): void;
 }
 
 export interface BridgeHandle {
@@ -30,6 +42,7 @@ export interface MockBridge extends BridgeHandle {
   emitReady(): void;
   emitSelection(sel: ReaderSelection): void;
   emitSelectionCleared(): void;
+  emitAnnotationsChanged(annotations: ReaderAnnotation[], deletedIds?: string[]): void;
 }
 
 export const mockBridges: MockBridge[] = [];
@@ -58,6 +71,9 @@ export function attachReaderBridge(iframe: HTMLIFrameElement, handlers: BridgeHa
     },
     emitSelectionCleared() {
       handlers.onSelectionCleared();
+    },
+    emitAnnotationsChanged(annotations, deletedIds = []) {
+      handlers.onAnnotationsChanged(annotations, deletedIds);
     },
   };
   mockBridges.push(bridge);

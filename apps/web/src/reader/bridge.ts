@@ -4,7 +4,8 @@
 // scripts/reader-bootstrap.js (injected into reader.html at build time) is the
 // iframe side of this bridge; both sides communicate over window.postMessage:
 //
-//   iframe → parent: { source: "pw-reader", type: "ready" | "selection" | "selectionCleared", payload? }
+//   iframe → parent: { source: "pw-reader", type: "ready" | "selection" | "selectionCleared"
+//                      | "annotationsChanged", payload? }
 //   parent → iframe: { source: "pw-host",   type: "jumpTo" | "clearSelection", payload? }
 //
 // Protocol source of truth:
@@ -20,10 +21,30 @@ export interface ReaderSelection {
   position: unknown;
 }
 
+/** 阅读器原生标注（经 bootstrap 归一化）：created/updated 经 onSaveAnnotations 推送。 */
+export interface ReaderAnnotation {
+  /** Reader-internal annotation id (unstable across sessions; do not persist as a key). */
+  id: string;
+  /** Reader-native type: highlight | underline | note | image | ink | text. */
+  type: string;
+  /** Highlighted/selected text (empty for pure notes). */
+  text: string;
+  /** User comment (the content of note annotations). */
+  comment: string;
+  color: string | null;
+  /** 1-based page (pageIndex + 1); null when the annotation has no page position. */
+  page: number | null;
+  pageLabel: string | null;
+  /** Reader-native position object, passed through untouched; store + feed back to jumpTo. */
+  position: unknown;
+}
+
 interface ReaderBridgeHandlers {
   onReady(): void;
   onSelection(sel: ReaderSelection): void;
   onSelectionCleared(): void;
+  /** Created/updated reader annotations; deletedIds holds reader ids of deleted ones. */
+  onAnnotationsChanged(annotations: ReaderAnnotation[], deletedIds: string[]): void;
 }
 
 export interface ReaderBridge {
@@ -64,6 +85,38 @@ function parseSelection(payload: unknown): ReaderSelection | null {
   };
 }
 
+function parseAnnotation(value: unknown): ReaderAnnotation | null {
+  if (typeof value !== "object" || value === null) return null;
+  const a = value as Record<string, unknown>;
+  if (typeof a.id !== "string" || typeof a.type !== "string") return null;
+  return {
+    id: a.id,
+    type: a.type,
+    text: typeof a.text === "string" ? a.text : "",
+    comment: typeof a.comment === "string" ? a.comment : "",
+    color: typeof a.color === "string" ? a.color : null,
+    page: isFiniteNumber(a.page) ? a.page : null,
+    pageLabel: typeof a.pageLabel === "string" ? a.pageLabel : null,
+    position: a.position ?? null,
+  };
+}
+
+function parseAnnotationsChanged(
+  payload: unknown,
+): { annotations: ReaderAnnotation[]; deletedIds: string[] } | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const p = payload as Record<string, unknown>;
+  if (!Array.isArray(p.annotations)) return null;
+  const annotations = p.annotations
+    .map(parseAnnotation)
+    .filter((a): a is ReaderAnnotation => a !== null);
+  const deletedIds = Array.isArray(p.deletedIds)
+    ? p.deletedIds.filter((id): id is string => typeof id === "string")
+    : [];
+  if (annotations.length === 0 && deletedIds.length === 0) return null;
+  return { annotations, deletedIds };
+}
+
 function targetOriginFor(iframe: HTMLIFrameElement): string {
   // The reader is served same-origin by the web app, but derive the origin from
   // the iframe src so a cross-origin reader build still gets messages.
@@ -99,6 +152,11 @@ export function attachReaderBridge(
       case "selectionCleared":
         handlers.onSelectionCleared();
         break;
+      case "annotationsChanged": {
+        const change = parseAnnotationsChanged(data.payload);
+        if (change) handlers.onAnnotationsChanged(change.annotations, change.deletedIds);
+        break;
+      }
       default:
         // Unknown message type — ignore.
         break;

@@ -22,8 +22,21 @@
 //                    { source: "pw-reader", type: "selection",
 //                      payload: { text, page, rect: {x,y,width,height}, position } }
 //                    { source: "pw-reader", type: "selectionCleared" }
+//                    { source: "pw-reader", type: "annotationsChanged",
+//                      payload: { annotations: [{ id, type, text, comment, color,
+//                                 page, pageLabel, position }], deletedIds? } }
 //   parent → iframe: { source: "pw-host", type: "jumpTo", payload: { page?, position? } }
 //                    { source: "pw-host", type: "clearSelection" }
+//
+// Annotation sync (reader → host only): the reader's annotation manager funnels
+// creates AND updates through the createReader onSaveAnnotations option (1s
+// debounce, full changed-annotation objects) and deletes through
+// onDeleteAnnotations (annotation ids) — see the annotation-manager wiring in
+// the built bundle (AnnotationManager{ onSave: this._onSaveAnnotations,
+// onDelete: this._handleDeleteAnnotations }) and its _triggerSaving. These are
+// the reader's official persistence callbacks, so they are the most robust
+// detection point available without modifying vendor files; we simply forward
+// normalized annotations to the host, which diffs and persists them.
 //
 // createReader's public options expose no selection hook, and vendor files may
 // not be modified, so the bridge observes the reader's internal state: the
@@ -125,6 +138,59 @@ window.addEventListener('DOMContentLoaded', () => {
 		};
 	};
 
+	// --- annotation sync (reader → host) -------------------------------------
+
+	// Reader annotation → bridge payload. Reader types: highlight, underline,
+	// note, image, ink, text (mapping to backend types happens host-side).
+	// page is 1-based (pageIndex + 1); notes and some ink/image annotations may
+	// have no position at all (page null) — the host skips those it can't
+	// place. position is passed through untouched so the host can store it and
+	// hand it back to jumpTo.
+	const normalizeAnnotation = (a) => {
+		if (!a || typeof a.id !== 'string' || typeof a.type !== 'string') {
+			return null;
+		}
+		const position = a.position && typeof a.position === 'object' ? a.position : null;
+		return {
+			id: a.id,
+			type: a.type,
+			text: typeof a.text === 'string' ? a.text : '',
+			comment: typeof a.comment === 'string' ? a.comment : '',
+			color: typeof a.color === 'string' ? a.color : null,
+			page: position && typeof position.pageIndex === 'number' ? position.pageIndex + 1 : null,
+			pageLabel: typeof a.pageLabel === 'string' ? a.pageLabel : null,
+			position,
+		};
+	};
+
+	// Called by the reader's annotation manager with the full objects of
+	// created/updated annotations (already debounced ~1s upstream).
+	const onSaveAnnotations = (annotations) => {
+		try {
+			const normalized = (Array.isArray(annotations) ? annotations : [])
+				.map(normalizeAnnotation)
+				.filter(Boolean);
+			if (normalized.length) {
+				postToHost({ type: 'annotationsChanged', payload: { annotations: normalized } });
+			}
+		}
+		catch (e) {
+			console.error('[paperweave] annotation sync error', e);
+		}
+	};
+
+	const onDeleteAnnotations = (ids) => {
+		try {
+			const deletedIds = (Array.isArray(ids) ? ids : []).filter((id) => typeof id === 'string');
+			if (deletedIds.length) {
+				postToHost({ type: 'annotationsChanged', payload: { annotations: [], deletedIds } });
+			}
+		}
+		catch (e) {
+			console.error('[paperweave] annotation delete sync error', e);
+		}
+	};
+
 	const installHostCommandListener = (reader) => {
 		window.addEventListener('message', (event) => {
 			if (event.source !== window.parent) {
@@ -176,8 +242,8 @@ window.addEventListener('DOMContentLoaded', () => {
 		sidebarView: 'annotations',
 		bottomPlaceholderHeight: null,
 		toolbarPlaceholderWidth: 0,
-		onSaveAnnotations: noop,
-		onDeleteAnnotations: noop,
+		onSaveAnnotations,
+		onDeleteAnnotations,
 		onChangeViewState: noop,
 		onOpenTagsPopup: noop,
 		onClosePopup: noop,

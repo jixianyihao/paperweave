@@ -173,6 +173,15 @@ export function aiTranslate(
   return apiSse("/api/ai/translate", input, onFrame, opts);
 }
 
+/** 截图（图/表/公式区域）解释：多模态端点，image 为 data URL */
+export function aiExplainImage(
+  input: { image: string; level?: ExplainLevel; itemId?: string; page?: number },
+  onFrame: (f: SseFrame) => void,
+  opts?: SseOptions,
+): Promise<void> {
+  return apiSse("/api/ai/explain-image", input, onFrame, opts);
+}
+
 /** 追问：创建/复用该标注的 conversation，SSE 流式返回 assistant 回复 */
 export function sendAnnotationMessage(
   annotationId: string,

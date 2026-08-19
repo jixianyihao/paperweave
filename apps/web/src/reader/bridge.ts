@@ -45,6 +45,23 @@ interface ReaderBridgeHandlers {
   onSelectionCleared(): void;
   /** Created/updated reader annotations; deletedIds holds reader ids of deleted ones. */
   onAnnotationsChanged(annotations: ReaderAnnotation[], deletedIds: string[]): void;
+  /** 区域（图片）标注的区域截图（PNG data URL）。 */
+  onAreaCapture?(capture: AreaCapture): void;
+}
+
+/** 区域截图载荷：Select Area 工具创建的 image 标注的裁剪图。 */
+export interface AreaCapture {
+  dataUrl: string;
+  page: number;
+  position: unknown;
+}
+
+function parseAreaCapture(payload: unknown): AreaCapture | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const p = payload as Record<string, unknown>;
+  if (typeof p.dataUrl !== "string" || !p.dataUrl.startsWith("data:image/")) return null;
+  if (!isFiniteNumber(p.page)) return null;
+  return { dataUrl: p.dataUrl, page: p.page, position: p.position ?? null };
 }
 
 export interface ReaderBridge {
@@ -155,6 +172,11 @@ export function attachReaderBridge(
       case "annotationsChanged": {
         const change = parseAnnotationsChanged(data.payload);
         if (change) handlers.onAnnotationsChanged(change.annotations, change.deletedIds);
+        break;
+      }
+      case "areaCapture": {
+        const capture = parseAreaCapture(data.payload);
+        if (capture) handlers.onAreaCapture?.(capture);
         break;
       }
       default:

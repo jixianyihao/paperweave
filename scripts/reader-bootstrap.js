@@ -163,6 +163,47 @@ window.addEventListener('DOMContentLoaded', () => {
 		};
 	};
 
+	// --- area capture (image annotations → PNG data URL) ------------------------
+	//
+	// When the user creates an area (image) annotation with the reader's
+	// "Select Area" tool, we crop the region from the page's rendered <canvas>
+	// in the DOM and forward it to the host as a data URL. DOM-based on purpose:
+	// no dependency on reader/pdf.js internals beyond the page/annotation
+	// elements, which the reader must render anyway to display the annotation.
+	const captureAreaImage = (annotation) => {
+		try {
+			const pageEl = document.querySelector(
+				`.page[data-page-number="${annotation.page}"]`,
+			) || document.querySelector(`[data-page-number="${annotation.page}"]`);
+			if (!pageEl) return null;
+			const canvas = pageEl.querySelector('canvas');
+			if (!canvas || !canvas.width) return null;
+			const annEl = pageEl.querySelector(`[data-annotation-id="${annotation.id}"]`)
+				|| document.querySelector(`[data-annotation-id="${annotation.id}"]`);
+			if (!annEl) return null;
+			const cRect = canvas.getBoundingClientRect();
+			const aRect = annEl.getBoundingClientRect();
+			const scaleX = canvas.width / cRect.width;
+			const scaleY = canvas.height / cRect.height;
+			const x = Math.max(0, (aRect.left - cRect.left) * scaleX);
+			const y = Math.max(0, (aRect.top - cRect.top) * scaleY);
+			const w = Math.min(canvas.width - x, aRect.width * scaleX);
+			const h = Math.min(canvas.height - y, aRect.height * scaleY);
+			if (w < 4 || h < 4) return null;
+			// 限宽 1600px 控制 data URL 体积
+			const scale = Math.min(1, 1600 / w);
+			const out = document.createElement('canvas');
+			out.width = Math.round(w * scale);
+			out.height = Math.round(h * scale);
+			out.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, out.width, out.height);
+			return out.toDataURL('image/png');
+		}
+		catch (e) {
+			console.error('[paperweave] area capture failed', e);
+			return null;
+		}
+	};
+
 	// Called by the reader's annotation manager with the full objects of
 	// created/updated annotations (already debounced ~1s upstream).
 	const onSaveAnnotations = (annotations) => {
@@ -172,6 +213,15 @@ window.addEventListener('DOMContentLoaded', () => {
 				.filter(Boolean);
 			if (normalized.length) {
 				postToHost({ type: 'annotationsChanged', payload: { annotations: normalized } });
+				// 区域（图片）标注：截取区域图像发给宿主（问 AI 用）
+				for (const a of normalized) {
+					if (a.type === 'image' && a.page) {
+						const dataUrl = captureAreaImage(a);
+						if (dataUrl) {
+							postToHost({ type: 'areaCapture', payload: { dataUrl, page: a.page, position: a.position } });
+						}
+					}
+				}
 			}
 		}
 		catch (e) {

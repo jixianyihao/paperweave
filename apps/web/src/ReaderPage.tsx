@@ -6,6 +6,7 @@ import { isMockMode, apiUrl } from "./api/client";
 import { isAbortError, type SseFrame, type SseOptions } from "./api/client";
 import {
   aiExplain,
+  aiExplainImage,
   aiSummarize,
   aiTranslate,
   askItem,
@@ -238,6 +239,7 @@ export default function ReaderPage() {
       },
       onSelectionCleared: () => setSelection(null),
       onAnnotationsChanged: (readerAnns) => handleReaderAnnotations(readerAnns),
+      onAreaCapture: (capture) => void handleAreaCapture(capture),
     });
     bridgeRef.current = handle;
     setBridgeApi({ jumpTo: (t) => handle.jumpTo(t) });
@@ -257,6 +259,63 @@ export default function ReaderPage() {
   const patchLocal = useCallback((id: string, f: (e: TimelineEntry) => TimelineEntry) => {
     setLocalEntries((es) => es.map((e) => (e.id === id ? f(e) : e)));
   }, []);
+
+  /** 区域截图（Select Area 工具的 image 标注）→ 多模态解释，流式进时间流 */
+  const handleAreaCapture = useCallback(
+    async (capture: { dataUrl: string; page: number; position: unknown }) => {
+      if (!readyItem) return;
+      localSeq += 1;
+      const localId = `local-${localSeq}`;
+      setLocalEntries((es) => [
+        ...es,
+        {
+          id: localId,
+          type: "ai_explain",
+          page: capture.page,
+          content: "",
+          created_at: nowStamp(),
+          sort_index: Number.MAX_SAFE_INTEGER,
+          pending: true,
+          question: "🖼 区域截图解释",
+        },
+      ]);
+      const aborter = newAborter();
+      let hadError = false;
+      try {
+        await aiExplainImage(
+          { image: capture.dataUrl, level: "grad", itemId: readyItem.id, page: capture.page },
+          (frame) => {
+            if (typeof frame.delta === "string") {
+              patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
+            } else if (typeof frame.thinking === "string") {
+              patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
+            } else if (typeof frame.error === "string") {
+              hadError = true;
+              patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
+            }
+          },
+          { signal: aborter.signal },
+        );
+        if (!hadError) {
+          const ok = await refetchAnnotations(readyItem.id);
+          if (ok) {
+            setLocalEntries((es) => es.filter((e) => e.id !== localId));
+          } else {
+            patchLocal(localId, (e) => ({ ...e, pending: false }));
+          }
+        }
+      } catch (err) {
+        if (!isAbortError(err)) {
+          patchLocal(localId, (e) => ({
+            ...e, pending: false, error: err instanceof Error ? err.message : "请求失败",
+          }));
+        }
+      } finally {
+        releaseAborter(aborter);
+      }
+    },
+    [readyItem, newAborter, releaseAborter, patchLocal, refetchAnnotations],
+  );
 
   /** 摘要/解释/翻译共用：本地 pending 条目流式填充；done 后重拉成功才撤本地条目，失败保留并轻提示 */
   const runAiAction = useCallback(

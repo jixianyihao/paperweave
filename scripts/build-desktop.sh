@@ -43,11 +43,7 @@ done
 echo "== building tauri app"
 pnpm -F @paperweave/desktop build
 
-# 6. macOS 额外打 DMG（ad-hoc 签名）
-if [ "$(uname -s)" = "Darwin" ]; then
-  echo "== packaging DMG (macOS)"
-  bash scripts/make-dmg.sh
-fi
+# 6. macOS DMG：tauri 自带 dmg bundler（targets: "all" 已含），不再用外部 make-dmg.sh
 
 echo "== done. Artifacts:"
 find apps/desktop/src-tauri/target/release/bundle -maxdepth 3 \( -name "*.dmg" -o -name "*.app" -o -name "*.msi" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec du -sh {} \; 2>/dev/null || true

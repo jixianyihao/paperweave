@@ -167,19 +167,29 @@ window.addEventListener('DOMContentLoaded', () => {
 	//
 	// When the user creates an area (image) annotation with the reader's
 	// "Select Area" tool, we crop the region from the page's rendered <canvas>
-	// in the DOM and forward it to the host as a data URL. DOM-based on purpose:
-	// no dependency on reader/pdf.js internals beyond the page/annotation
-	// elements, which the reader must render anyway to display the annotation.
+	// and forward it to the host as a data URL. NOTE: the page canvases and the
+	// annotation layer live in the NESTED viewer iframe (reader.html embeds
+	// pdf/web/viewer.html), not in this document — same origin, so we reach in.
+	const viewerDoc = () => {
+		const inner = document.querySelector('iframe');
+		try {
+			return inner && inner.contentDocument && inner.contentDocument.querySelector('canvas')
+				? inner.contentDocument
+				: document;
+		}
+		catch {
+			return document;
+		}
+	};
+
 	const captureAreaImage = (annotation) => {
 		try {
-			const pageEl = document.querySelector(
-				`.page[data-page-number="${annotation.page}"]`,
-			) || document.querySelector(`[data-page-number="${annotation.page}"]`);
+			const doc = viewerDoc();
+			const pageEl = doc.querySelector(`[data-page-number="${annotation.page}"]`);
 			if (!pageEl) return null;
 			const canvas = pageEl.querySelector('canvas');
 			if (!canvas || !canvas.width) return null;
-			const annEl = pageEl.querySelector(`[data-annotation-id="${annotation.id}"]`)
-				|| document.querySelector(`[data-annotation-id="${annotation.id}"]`);
+			const annEl = doc.querySelector(`[data-annotation-id="${annotation.id}"]`);
 			if (!annEl) return null;
 			const cRect = canvas.getBoundingClientRect();
 			const aRect = annEl.getBoundingClientRect();

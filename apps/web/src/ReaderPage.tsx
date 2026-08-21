@@ -281,6 +281,7 @@ export default function ReaderPage() {
       ]);
       const aborter = newAborter();
       let hadError = false;
+      let thinkingAcc = "";
       try {
         await aiExplainImage(
           { image: capture.dataUrl, level: "grad", itemId: readyItem.id, page: capture.page },
@@ -288,7 +289,12 @@ export default function ReaderPage() {
             if (typeof frame.delta === "string") {
               patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
             } else if (typeof frame.thinking === "string") {
+              thinkingAcc += frame.thinking as string;
               patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
+            } else if (frame.done) {
+              if (thinkingAcc && typeof frame.annotation_id === "string") {
+                thinkingByAnnRef.current.set(frame.annotation_id, thinkingAcc);
+              }
             } else if (typeof frame.error === "string") {
               hadError = true;
               patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
@@ -342,13 +348,19 @@ export default function ReaderPage() {
       ]);
       const aborter = newAborter();
       let hadError = false;
+      let thinkingAcc = "";
       try {
         await call(
           (frame) => {
             if (typeof frame.delta === "string") {
               patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
             } else if (typeof frame.thinking === "string") {
+              thinkingAcc += frame.thinking as string;
               patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
+            } else if (frame.done) {
+              if (thinkingAcc && typeof frame.annotation_id === "string") {
+                thinkingByAnnRef.current.set(frame.annotation_id, thinkingAcc);
+              }
             } else if (typeof frame.error === "string") {
               hadError = true;
               patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
@@ -478,6 +490,7 @@ export default function ReaderPage() {
           pending: true,
         },
       ]);
+      let thinkingAcc = "";
       const aborter = newAborter();
       void askItem(
         readyItem.id,
@@ -486,7 +499,8 @@ export default function ReaderPage() {
           if (typeof frame.delta === "string") {
             patchLocal(localId, (e) => ({ ...e, content: e.content + frame.delta }));
           } else if (typeof frame.thinking === "string") {
-            patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
+            thinkingAcc += frame.thinking as string;
+              patchLocal(localId, (e) => ({ ...e, thinking: (e.thinking ?? "") + (frame.thinking as string) }));
           } else if (typeof frame.error === "string") {
             patchLocal(localId, (e) => ({ ...e, pending: false, error: frame.error as string }));
           } else if (frame.done) {
@@ -512,8 +526,18 @@ export default function ReaderPage() {
     [readyItem, asking, patchLocal, newAborter, releaseAborter],
   );
 
+  /** 思考过程不落库（annotation 只存正文），用 annotation_id 暂存以在重拉后恢复显示 */
+  const thinkingByAnnRef = useRef<Map<string, string>>(new Map());
+
   const entries = useMemo(
-    () => [...annotations.map(annToEntry), ...localEntries],
+    () => [
+      ...annotations.map((a) => {
+        const e = annToEntry(a);
+        const thinking = thinkingByAnnRef.current.get(a.id);
+        return thinking ? { ...e, thinking } : e;
+      }),
+      ...localEntries,
+    ],
     [annotations, localEntries],
   );
 

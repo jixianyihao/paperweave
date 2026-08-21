@@ -1,0 +1,15 @@
+[     146ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-SSKRHHYJ.js?v=54ab2193:21548
+[     160ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=54ab2193:4424
+[     308ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:5173/reader/pdf/web/viewer.html:0
+[     389ms] [LOG] PDF ff3e15dfc6c8c63548b1c64bc2982fdb [1.5 pdfTeX-1.40.25 / LaTeX with hyperref] (PDF.js: 5.7.0 [f57fc80]) @ http://localhost:5173/reader/pdf/web/viewer.mjs:20
+[   68190ms] [LOG] [vite] server connection lost. Polling for restart... @ http://localhost:5173/@vite/client:559
+[   68191ms] [ERROR] Failed to load resource: net::ERR_NETWORK_IO_SUSPENDED @ http://localhost:5173/api/ai/summarize:0
+[   68382ms] [INFO] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-SSKRHHYJ.js?v=54ab2193:21548
+[   68391ms] [WARNING] ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition. @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=54ab2193:4424
+[   68644ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:5173/reader/pdf/web/viewer.html:0
+[   68731ms] [LOG] PDF ff3e15dfc6c8c63548b1c64bc2982fdb [1.5 pdfTeX-1.40.25 / LaTeX with hyperref] (PDF.js: 5.7.0 [f57fc80]) @ http://localhost:5173/reader/pdf/web/viewer.mjs:20
+[ 3861420ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googleadservices.com/pagead/conversion/16521530460/?gad_source=1&adview_type=1&adview_query_id=COm-3JWer5YDFTMtRAgdVFcI4A:0
+[ 3862232ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtag/js?id=AW-16521530460&preconnect=1&type=7&qid=COm-3JWer5YDFTMtRAgdVFcI4A:0
+[ 3862515ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://www.googletagmanager.com/gtm.js?id=GTM-16521530460&preconnect=1&type=8&qid=COm-3JWer5YDFTMtRAgdVFcI4A:0
+[ 3865436ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ep1.adtrafficquality.google/getconfig/sodar?sv=200&tid=oos&tv=2519&st=cr_env&sjk=wfaGap20Ls-rur8P0b_LwAw:0
+[ 3865566ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_CLOSED @ https://ogads-pa.clients6.google.com/$rpc/google.internal.onegoogle.asyncdata.v1.AsyncDataService/GetAsyncData:0

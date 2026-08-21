@@ -1,0 +1,31 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - iframe [ref=e5]:
+      
+    - complementary "时间流" [ref=e6]:
+      - separator "拖动调整侧栏宽度" [ref=e7]
+      - heading "Attention Is All You Need" [level=1] [ref=e9]
+      - list [ref=e11]:
+        - listitem [ref=e12]:
+          - generic [ref=e13]:
+            - generic [ref=e14]: 解释
+            - generic [ref=e15]: P1
+            - button "↩ 跳回原文" [ref=e16] [cursor=pointer]
+          - generic [ref=e18]:
+            - paragraph [ref=e19]: Imagine you have a robot friend whose job is to translate stories from one language into another.
+            - paragraph [ref=e20]: "Before this paper, most robot translators read stories in tricky ways: they would go word by word, like reading a long sentence with a tiny flashlight, or they would peek through a small window at only a few words at a time."
+            - paragraph [ref=e21]:
+              - text: The scientists in this paper built a new, simpler robot called the
+              - strong [ref=e22]: Transformer
+              - text: . Instead of reading one tiny piece at a time, this robot uses
+              - strong [ref=e23]: attention
+              - text: . That means when it sees a sentence, it looks at the whole thing at once and focuses on the important words—just like when you listen to a story, you pay extra attention to the characters, the exciting parts, and the big ideas.
+            - paragraph [ref=e24]: Because the Transformer doesn’t need the old step-by-step tricks, it can work a lot faster. It’s like coloring a big picture with a team of friends, where everyone colors different parts at the same time, instead of one person coloring the whole thing alone.
+            - paragraph [ref=e25]: The scientists showed that their new robot translates languages better than the older robots, and it finishes its practice much, much quicker too!
+          - button "追问 / 展开对话" [ref=e26] [cursor=pointer]
+      - generic [ref=e27]:
+        - textbox "全文问答输入" [ref=e28]:
+          - /placeholder: 就全文提问…
+        - button "提问" [disabled] [ref=e29]
+  - generic "语音模式" [ref=e30]:
+    - button "开始语音会话" [ref=e31] [cursor=pointer]
